@@ -7,7 +7,7 @@ WORKDIR /app
 # Install dependencies
 COPY package*.json ./
 ENV PUPPETEER_SKIP_DOWNLOAD=true
-RUN npm install --omit=dev
+RUN npm install
 
 # Copy prisma schema
 COPY prisma ./prisma/
