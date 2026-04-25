@@ -194,7 +194,7 @@ router.post(
     });
 
     let matchScore = 0;
-    let matchReasons = [];
+    let matchReasons: string[] = [];
 
     if (userProfile) {
       const userSkills = userProfile.skills.map((s) => s.name.toLowerCase());

@@ -28,7 +28,7 @@ export const generateAccessToken = (payload: Omit<AccessTokenPayload, 'type'>): 
   return jwt.sign(
     { ...payload, type: 'access' },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRE }
+{ expiresIn: JWT_EXPIRE as any }
   );
 };
 
@@ -39,7 +39,7 @@ export const generateRefreshToken = (payload: Omit<RefreshTokenPayload, 'type'>)
   return jwt.sign(
     { ...payload, type: 'refresh' },
     JWT_REFRESH_SECRET,
-    { expiresIn: JWT_REFRESH_EXPIRE }
+    { expiresIn: JWT_REFRESH_EXPIRE as any }
   );
 };
 

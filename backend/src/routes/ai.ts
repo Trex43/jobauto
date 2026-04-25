@@ -80,7 +80,7 @@ router.post(
       : 0;
 
     // Use AI for advanced matching if OpenAI key is available
-    let aiAnalysis = null;
+    let aiAnalysis: any = null;
     if (process.env.OPENAI_API_KEY) {
       try {
         const prompt = `

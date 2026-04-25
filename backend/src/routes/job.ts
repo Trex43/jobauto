@@ -172,7 +172,7 @@ router.get(
 
     // Check if user has already applied
     let hasApplied = false;
-    let application = null;
+    let application: any = null;
 
     if (req.user) {
       application = await prisma.application.findFirst({
@@ -185,17 +185,23 @@ router.get(
     }
 
     // Calculate match score if user is authenticated
-    let matchScore = null;
-    let matchReasons = [];
+    let matchScore: number | null = null;
+    let matchReasons: string[] = [];
 
     if (req.user) {
-      const userProfile = await prisma.profile.findUnique({
-        where: { userId: req.user.userId },
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
         include: {
-          skills: true,
+          profile: {
+            include: {
+              skills: true,
+            },
+          },
           jobPreferences: true,
         },
       });
+
+      const userProfile = user?.profile;
 
       if (userProfile) {
         const userSkills = userProfile.skills.map((s) => s.name.toLowerCase());
@@ -213,7 +219,7 @@ router.get(
           matchReasons.push(`You have ${matchingSkills.length} matching skills`);
         }
 
-        const prefs = userProfile.jobPreferences;
+        const prefs = user?.jobPreferences;
         if (prefs) {
           if (prefs.desiredRoles?.some((role) => 
             job.title.toLowerCase().includes(role.toLowerCase())
@@ -436,7 +442,7 @@ router.get(
       );
 
       let score = 0;
-      const reasons = [];
+      const reasons: string[] = [];
 
       // Skill match (up to 50 points)
       if (jobSkills.length > 0) {
