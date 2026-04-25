@@ -22,7 +22,7 @@ WORKDIR /app
 
 # Copy only production dependencies from builder (optional, but keeps image smaller)
 COPY --from=builder /app/package*.json ./
-RUN npm ci --only=production
+RUN npm install --omit=dev
 
 # Copy compiled output
 COPY --from=builder /app/dist ./dist
