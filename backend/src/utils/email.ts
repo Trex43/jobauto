@@ -2,8 +2,14 @@ import { Resend } from 'resend';
 import nodemailer from 'nodemailer';
 import { logger } from './logger';
 
-// Initialize Resend (primary email service)
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend lazily (avoids crash if RESEND_API_KEY is missing)
+let resend: Resend | null = null;
+const getResend = (): Resend | null => {
+  if (!resend && process.env.RESEND_API_KEY) {
+    resend = new Resend(process.env.RESEND_API_KEY);
+  }
+  return resend;
+};
 
 // Initialize Nodemailer (fallback for development)
 const nodemailerTransporter = nodemailer.createTransport({
@@ -41,7 +47,12 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
 
     // Use Resend in production
     if (process.env.NODE_ENV === 'production' && process.env.RESEND_API_KEY) {
-      const { data, error } = await resend.emails.send({
+      const client = getResend();
+      if (!client) {
+        logger.warn('Resend client unavailable: RESEND_API_KEY missing');
+        return false;
+      }
+      const { data, error } = await client.emails.send({
         from: `${FROM_NAME} <${FROM_EMAIL}>`,
         to: Array.isArray(to) ? to : [to],
         subject,
