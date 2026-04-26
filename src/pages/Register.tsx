@@ -15,21 +15,41 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    // Clear field error when user types
+    if (fieldErrors[e.target.name]) {
+      setFieldErrors((prev) => {
+        const next = { ...prev };
+        delete next[e.target.name];
+        return next;
+      });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
     setIsLoading(true);
 
     try {
       await register(form);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Registration failed');
+      if (err.errors && err.errors.length > 0) {
+        // Build field-specific errors
+        const errors: Record<string, string> = {};
+        err.errors.forEach((e: any) => {
+          if (e.param) errors[e.param] = e.msg;
+        });
+        setFieldErrors(errors);
+        setError(err.message || 'Please fix the errors below');
+      } else {
+        setError(err.message || 'Registration failed');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -66,10 +86,13 @@ export default function Register() {
                   name="firstName"
                   value={form.firstName}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0a0a0f] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors"
+                  className={`w-full px-4 py-3 bg-[#0a0a0f] border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors ${fieldErrors.firstName ? 'border-red-500' : 'border-gray-700'}`}
                   placeholder="John"
                   required
                 />
+                {fieldErrors.firstName && (
+                  <p className="mt-1 text-xs text-red-400">{fieldErrors.firstName}</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Last Name</label>
@@ -77,10 +100,13 @@ export default function Register() {
                   name="lastName"
                   value={form.lastName}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0a0a0f] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors"
+                  className={`w-full px-4 py-3 bg-[#0a0a0f] border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors ${fieldErrors.lastName ? 'border-red-500' : 'border-gray-700'}`}
                   placeholder="Doe"
                   required
                 />
+                {fieldErrors.lastName && (
+                  <p className="mt-1 text-xs text-red-400">{fieldErrors.lastName}</p>
+                )}
               </div>
             </div>
 
@@ -91,10 +117,13 @@ export default function Register() {
                 name="email"
                 value={form.email}
                 onChange={handleChange}
-                className="w-full px-4 py-3 bg-[#0a0a0f] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors"
+                className={`w-full px-4 py-3 bg-[#0a0a0f] border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors ${fieldErrors.email ? 'border-red-500' : 'border-gray-700'}`}
                 placeholder="you@example.com"
                 required
               />
+              {fieldErrors.email && (
+                <p className="mt-1 text-xs text-red-400">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -105,7 +134,7 @@ export default function Register() {
                   name="password"
                   value={form.password}
                   onChange={handleChange}
-                  className="w-full px-4 py-3 bg-[#0a0a0f] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors pr-12"
+                  className={`w-full px-4 py-3 bg-[#0a0a0f] border rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[#7c39f6] transition-colors pr-12 ${fieldErrors.password ? 'border-red-500' : 'border-gray-700'}`}
                   placeholder="Min 8 characters"
                   minLength={8}
                   required
@@ -118,6 +147,9 @@ export default function Register() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-xs text-red-400">{fieldErrors.password}</p>
+              )}
             </div>
 
             <button

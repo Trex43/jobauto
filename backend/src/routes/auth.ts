@@ -36,8 +36,8 @@ router.post(
     body('password')
       .isLength({ min: 8 })
       .withMessage('Password must be at least 8 characters')
-      .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-      .withMessage('Password must contain uppercase, lowercase, and number'),
+      .matches(/^(?=.*[a-zA-Z])(?=.*\d)/)
+      .withMessage('Password must contain at least one letter and one number'),
     body('firstName').trim().notEmpty().withMessage('First name is required'),
     body('lastName').trim().notEmpty().withMessage('Last name is required'),
     handleValidationErrors,
