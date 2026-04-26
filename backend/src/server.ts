@@ -8,6 +8,20 @@ import rateLimit from 'express-rate-limit';
 // Load environment variables
 dotenv.config();
 
+// Validate required environment variables
+const requiredEnvVars = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+  console.error('❌ Missing required environment variables:');
+  missingEnvVars.forEach((envVar) => {
+    console.error(`   - ${envVar}`);
+  });
+  console.error('\nPlease set these variables in your deployment dashboard (Render/Railway/etc.)');
+  console.error('See backend/.env.example for the full list of required variables.\n');
+  process.exit(1);
+}
+
 // Import routes
 import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
