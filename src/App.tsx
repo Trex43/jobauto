@@ -9,8 +9,11 @@ import LandingPage from '@/pages/LandingPage';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 
-// Dashboard
+// Dashboard & App pages
 import Dashboard from '@/pages/Dashboard';
+import Jobs from '@/pages/Jobs';
+import Applications from '@/pages/Applications';
+import Profile from '@/pages/Profile';
 
 function App() {
   return (
@@ -28,6 +31,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/jobs"
+            element={
+              <ProtectedRoute>
+                <Jobs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/applications"
+            element={
+              <ProtectedRoute>
+                <Applications />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />
