@@ -2,7 +2,7 @@
 
 **Status:** ✅ ALL FIXES PUSHED — Ready for Render redeploy
 
-## Fixes Applied (7 files):
+## Fixes Applied (8 files):
 - [x] 1. `backend/tsconfig.json` — Added `"noImplicitAny": false` to resolve 100+ TS7006 errors
 - [x] 2. `backend/src/utils/jwt.ts` — Added `as any` to both `expiresIn` options
 - [x] 3. `backend/src/routes/job.ts` — Fixed Prisma query (jobPreferences on User, not Profile)
@@ -10,13 +10,16 @@
 - [x] 5. `backend/src/routes/application.ts` — Added `matchReasons: string[]` type annotation
 - [x] 6. `backend/src/routes/ai.ts` — Added `aiAnalysis: any` type annotation
 - [x] 7. `backend/Dockerfile` — Changed `npm ci --only=production` → `npm install --omit=dev` to fix lockfile sync error
+- [x] 8. `backend/src/utils/email.ts` — Made Resend lazy-initialized to prevent crash when RESEND_API_KEY is missing
 
-## Build Results:
+## Build Results (Previous Attempt):
 - ✅ `npm install` — 449 packages installed (8m)
 - ✅ `npx prisma generate` — Prisma Client v5.22.0 generated
-- ✅ `npm run build` (tsc) — **COMPILED SUCCESSFULLY** (8.8s)
-- ✅ `npm install --omit=dev` — production deps installed
-- 🚀 Image built and deployed
+- ✅ `npm run build` (tsc) — **COMPILED SUCCESSFULLY** (5.4s)
+- ✅ `npm install --omit=dev` — 377 production deps installed
+- ✅ Image pushed to registry
+- ❌ `new Resend(undefined)` — **CRASHED ON STARTUP** (RESEND_API_KEY missing)
+- 🔄 Fix pushed: lazy initialization + null check in sendEmail
 
 ## Next Steps:
 1. **Render auto-deploys** on push — check dashboard for new build
@@ -35,4 +38,5 @@
 ## Commits:
 - `999ad06` — TypeScript strict mode fixes
 - `71b97e8` — Docker production stage npm install fix
+- `b9a5fd2` — Lazy Resend initialization crash fix
 

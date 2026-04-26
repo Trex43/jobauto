@@ -5,10 +5,16 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16' as any,
-});
+// Initialize Stripe lazily (avoids crash if STRIPE_SECRET_KEY is missing)
+let _stripe: Stripe | null = null;
+const getStripe = (): Stripe | null => {
+  if (!_stripe && process.env.STRIPE_SECRET_KEY) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16' as any,
+    });
+  }
+  return _stripe;
+};
 
 /**
  * @route   POST /api/webhooks/stripe
@@ -19,6 +25,12 @@ router.post('/stripe', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  const stripeClient = getStripe();
+  if (!stripeClient) {
+    logger.error('Stripe webhook received but Stripe is not configured');
+    return res.status(503).send('Stripe not configured');
+  }
+
   let event: Stripe.Event;
 
   try {
@@ -26,7 +38,7 @@ router.post('/stripe', async (req, res) => {
       throw new Error('Missing stripe signature or endpoint secret');
     }
 
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    event = stripeClient.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err: any) {
     logger.error('Stripe webhook error:', err.message);
     return res.status(400).send(`Webhook Error: ${err.message}`);
@@ -268,3 +280,4 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 }
 
 export default router;
+

@@ -8,10 +8,16 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2023-10-16' as any,
-});
+// Initialize Stripe lazily (avoids crash if STRIPE_SECRET_KEY is missing)
+let _stripe: Stripe | null = null;
+const getStripe = (): Stripe | null => {
+  if (!_stripe && process.env.STRIPE_SECRET_KEY) {
+    _stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2023-10-16' as any,
+    });
+  }
+  return _stripe;
+};
 
 const handleValidationErrors = (req: any, res: any, next: any) => {
   const errors = validationResult(req);
@@ -170,11 +176,16 @@ router.post(
       throw new APIError('Payment configuration error', 500);
     }
 
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      throw new APIError('Payment service not available', 503);
+    }
+
     let customerId = user.subscription?.stripeCustomerId;
 
     // Create customer if doesn't exist
     if (!customerId) {
-      const customer = await stripe.customers.create({
+      const customer = await stripeClient.customers.create({
         email: user.email,
         name: `${user.firstName} ${user.lastName}`,
         metadata: {
@@ -191,7 +202,7 @@ router.post(
     }
 
     // Create checkout session
-    const session = await stripe.checkout.sessions.create({
+    const session = await stripeClient.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ['card'],
       line_items: [
@@ -240,8 +251,13 @@ router.post(
       throw new APIError('No active subscription found', 404);
     }
 
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      throw new APIError('Payment service not available', 503);
+    }
+
     // Cancel at period end
-    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
       cancel_at_period_end: true,
     });
 
@@ -279,8 +295,13 @@ router.post(
       throw new APIError('No subscription found', 404);
     }
 
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      throw new APIError('Payment service not available', 503);
+    }
+
     // Reactivate subscription
-    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
       cancel_at_period_end: false,
     });
 
@@ -318,7 +339,12 @@ router.post(
       throw new APIError('No subscription found', 404);
     }
 
-    const session = await stripe.billingPortal.sessions.create({
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      throw new APIError('Payment service not available', 503);
+    }
+
+    const session = await stripeClient.billingPortal.sessions.create({
       customer: subscription.stripeCustomerId,
       return_url: `${process.env.CLIENT_URL}/settings/billing`,
     });
@@ -352,7 +378,15 @@ router.get(
       });
     }
 
-    const invoices = await stripe.invoices.list({
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      return res.json({
+        success: true,
+        data: { invoices: [] },
+      });
+    }
+
+    const invoices = await stripeClient.invoices.list({
       customer: subscription.stripeCustomerId,
       limit: 24,
     });
@@ -406,11 +440,16 @@ router.post(
       throw new APIError('Payment configuration error', 500);
     }
 
+    const stripeClient = getStripe();
+    if (!stripeClient) {
+      throw new APIError('Payment service not available', 503);
+    }
+
     // Update subscription
-    await stripe.subscriptions.update(subscription.stripeSubscriptionId, {
+    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
       items: [
         {
-          id: (await stripe.subscriptions.retrieve(subscription.stripeSubscriptionId)).items.data[0].id,
+          id: (await stripeClient.subscriptions.retrieve(subscription.stripeSubscriptionId)).items.data[0].id,
           price: newPriceId,
         },
       ],
@@ -433,3 +472,4 @@ router.post(
 );
 
 export default router;
+
