@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Zap, Briefcase, ArrowLeft } from 'lucide-react';
+import { Briefcase, ArrowLeft } from 'lucide-react';
 
 export default function Jobs() {
   return (
