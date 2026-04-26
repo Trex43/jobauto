@@ -42,4 +42,8 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
 
-CMD ["node", "dist/server.js"]
+# Copy startup script
+COPY --from=builder /app/start.sh ./start.sh
+RUN chmod +x start.sh
+
+CMD ["./start.sh"]
