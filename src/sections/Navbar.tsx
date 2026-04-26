@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Menu, X, Zap } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 const Navbar = () => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -41,14 +45,14 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7c39f6] to-[#a855f7] flex items-center justify-center group-hover:shadow-[0_0_20px_rgba(124,57,246,0.5)] transition-shadow">
               <Zap className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold text-white">
               Job<span className="text-[#7c39f6]">Auto</span>
             </span>
-          </a>
+          </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-8">
@@ -66,12 +70,26 @@ const Navbar = () => {
 
           {/* CTA Buttons */}
           <div className="hidden lg:flex items-center gap-4">
-            <button className="text-sm text-gray-300 hover:text-white transition-colors">
-              Sign In
-            </button>
-            <button className="px-5 py-2.5 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white text-sm font-semibold rounded-xl hover:shadow-[0_0_20px_rgba(124,57,246,0.4)] transition-all hover:-translate-y-0.5">
-              Get Started
-            </button>
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="px-5 py-2.5 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white text-sm font-semibold rounded-xl hover:shadow-[0_0_20px_rgba(124,57,246,0.4)] transition-all hover:-translate-y-0.5"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="text-sm text-gray-300 hover:text-white transition-colors">
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-5 py-2.5 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white text-sm font-semibold rounded-xl hover:shadow-[0_0_20px_rgba(124,57,246,0.4)] transition-all hover:-translate-y-0.5"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -101,12 +119,26 @@ const Navbar = () => {
             </button>
           ))}
           <div className="pt-4 border-t border-gray-800 space-y-3">
-            <button className="block w-full text-left text-gray-300 hover:text-white py-2">
-              Sign In
-            </button>
-            <button className="w-full px-5 py-3 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white font-semibold rounded-xl">
-              Get Started
-            </button>
+            {isAuthenticated ? (
+              <Link
+                to="/dashboard"
+                className="block w-full text-center px-5 py-3 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white font-semibold rounded-xl"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link to="/login" className="block w-full text-left text-gray-300 hover:text-white py-2">
+                  Sign In
+                </Link>
+                <Link
+                  to="/register"
+                  className="block w-full text-center px-5 py-3 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white font-semibold rounded-xl"
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -115,3 +147,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+

@@ -1,51 +1,41 @@
-import { useEffect } from 'react';
-import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from '@/context/AuthContext';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-// Import sections
-import Navbar from './sections/Navbar';
-import Hero from './sections/Hero';
-import HowItWorks from './sections/HowItWorks';
-import Features from './sections/Features';
-import Pricing from './sections/Pricing';
-import Testimonials from './sections/Testimonials';
-import FAQ from './sections/FAQ';
-import CTA from './sections/CTA';
-import Footer from './sections/Footer';
+// Landing page sections
+import LandingPage from '@/pages/LandingPage';
 
-// Register GSAP plugins
-gsap.registerPlugin(ScrollTrigger);
+// Auth pages
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+
+// Dashboard
+import Dashboard from '@/pages/Dashboard';
 
 function App() {
-  useEffect(() => {
-    // Initialize smooth scroll behavior
-    document.documentElement.style.scrollBehavior = 'smooth';
-
-    // Refresh ScrollTrigger on load
-    ScrollTrigger.refresh();
-
-    return () => {
-      // Cleanup ScrollTrigger on unmount
-      ScrollTrigger.getAll().forEach((trigger) => trigger.kill());
-    };
-  }, []);
-
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
-      <Navbar />
-      <main>
-        <Hero />
-        <HowItWorks />
-        <Features />
-        <Pricing />
-        <Testimonials />
-        <FAQ />
-        <CTA />
-      </main>
-      <Footer />
-    </div>
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* Protected routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 
 export default App;
+

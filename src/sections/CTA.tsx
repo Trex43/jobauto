@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { ArrowRight, Sparkles } from 'lucide-react';
 
@@ -63,10 +64,13 @@ const CTA = () => {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <button className="group px-8 py-4 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white font-semibold rounded-xl hover:shadow-[0_0_30px_rgba(124,57,246,0.5)] transition-all hover:-translate-y-1 flex items-center justify-center gap-2">
+              <Link
+                to="/register"
+                className="group px-8 py-4 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white font-semibold rounded-xl hover:shadow-[0_0_30px_rgba(124,57,246,0.5)] transition-all hover:-translate-y-1 flex items-center justify-center gap-2"
+              >
                 Get Started Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
+              </Link>
               <button className="px-8 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 transition-all">
                 Schedule Demo
               </button>
