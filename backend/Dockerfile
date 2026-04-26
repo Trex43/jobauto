@@ -2,6 +2,9 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
+# Install OpenSSL for Prisma engine compatibility
+RUN apk add --no-cache openssl
+
 # Copy package files and install ALL dependencies (including dev)
 COPY package*.json ./
 RUN npm install
@@ -19,6 +22,9 @@ RUN npm run build
 # ---- Production Stage ----
 FROM node:20-alpine
 WORKDIR /app
+
+# Install OpenSSL for Prisma engine compatibility
+RUN apk add --no-cache openssl
 
 # Copy only production dependencies from builder (optional, but keeps image smaller)
 COPY --from=builder /app/package*.json ./
