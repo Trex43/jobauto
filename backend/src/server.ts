@@ -98,6 +98,16 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Root endpoint for load balancer / uptime checks
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'jobauto-api',
+    version: process.env.npm_package_version || '1.0.0',
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // API routes
 app.use('/api/webhooks', webhookRoutes); // Webhooks don't need auth
 app.use('/api/auth', authRoutes);
