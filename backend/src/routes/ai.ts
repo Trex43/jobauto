@@ -8,10 +8,16 @@ import { logger } from '../utils/logger';
 
 const router = Router();
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Initialize OpenAI lazily (avoids crash if OPENAI_API_KEY is missing)
+let openai: OpenAI | null = null;
+const getOpenAI = (): OpenAI | null => {
+  if (!openai && process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openai;
+};
 
 const handleValidationErrors = (req: any, res: any, next: any) => {
   const errors = validationResult(req);
@@ -83,49 +89,54 @@ router.post(
     let aiAnalysis: any = null;
     if (process.env.OPENAI_API_KEY) {
       try {
-        const prompt = `
-          Analyze the match between a job seeker and a job posting.
-          
-          Job Seeker Profile:
-          - Skills: ${userSkills.join(', ')}
-          - Experience: ${user.profile.yearsOfExperience || 'Not specified'} years
-          - Current Title: ${user.profile.currentTitle || 'Not specified'}
-          - Summary: ${user.profile.summary || 'Not provided'}
-          
-          Job Posting:
-          - Title: ${job.title}
-          - Company: ${job.company}
-          - Description: ${job.description.substring(0, 1000)}
-          - Required Skills: ${jobSkills.join(', ')}
-          
-          Provide a JSON response with:
-          1. overallMatchScore (0-100)
-          2. skillMatchScore (0-100)
-          3. experienceMatchScore (0-100)
-          4. keyStrengths (array of strings)
-          5. gaps (array of strings)
-          6. recommendations (array of strings)
-        `;
+        const client = getOpenAI();
+        if (!client) {
+          logger.warn('OpenAI client unavailable');
+        } else {
+          const prompt = `
+            Analyze the match between a job seeker and a job posting.
+            
+            Job Seeker Profile:
+            - Skills: ${userSkills.join(', ')}
+            - Experience: ${user.profile.yearsOfExperience || 'Not specified'} years
+            - Current Title: ${user.profile.currentTitle || 'Not specified'}
+            - Summary: ${user.profile.summary || 'Not provided'}
+            
+            Job Posting:
+            - Title: ${job.title}
+            - Company: ${job.company}
+            - Description: ${job.description.substring(0, 1000)}
+            - Required Skills: ${jobSkills.join(', ')}
+            
+            Provide a JSON response with:
+            1. overallMatchScore (0-100)
+            2. skillMatchScore (0-100)
+            3. experienceMatchScore (0-100)
+            4. keyStrengths (array of strings)
+            5. gaps (array of strings)
+            6. recommendations (array of strings)
+          `;
 
-        const completion = await openai.chat.completions.create({
-          model: 'gpt-4',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are an expert job matching AI. Analyze job seeker profiles and job postings to provide accurate match scores and insights. Respond only with valid JSON.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          temperature: 0.3,
-          max_tokens: 1000,
-        });
+          const completion = await client.chat.completions.create({
+            model: 'gpt-4',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are an expert job matching AI. Analyze job seeker profiles and job postings to provide accurate match scores and insights. Respond only with valid JSON.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            temperature: 0.3,
+            max_tokens: 1000,
+          });
 
-        const response = completion.choices[0]?.message?.content;
-        if (response) {
-          aiAnalysis = JSON.parse(response);
+          const response = completion.choices[0]?.message?.content;
+          if (response) {
+            aiAnalysis = JSON.parse(response);
+          }
         }
       } catch (error) {
         logger.error('AI matching error:', error);
@@ -201,7 +212,12 @@ router.post(
     `;
 
     try {
-      const completion = await openai.chat.completions.create({
+      const client = getOpenAI();
+      if (!client) {
+        throw new APIError('AI service not available', 503);
+      }
+
+      const completion = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -276,7 +292,12 @@ router.post(
     `;
 
     try {
-      const completion = await openai.chat.completions.create({
+      const client = getOpenAI();
+      if (!client) {
+        throw new APIError('AI service not available', 503);
+      }
+
+      const completion = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -428,7 +449,12 @@ router.post(
     `;
 
     try {
-      const completion = await openai.chat.completions.create({
+      const client = getOpenAI();
+      if (!client) {
+        throw new APIError('AI service not available', 503);
+      }
+
+      const completion = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -515,7 +541,12 @@ router.post(
     `;
 
     try {
-      const completion = await openai.chat.completions.create({
+      const client = getOpenAI();
+      if (!client) {
+        throw new APIError('AI service not available', 503);
+      }
+
+      const completion = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -592,7 +623,12 @@ router.post(
     `;
 
     try {
-      const completion = await openai.chat.completions.create({
+      const client = getOpenAI();
+      if (!client) {
+        throw new APIError('AI service not available', 503);
+      }
+
+      const completion = await client.chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -631,3 +667,4 @@ router.post(
 );
 
 export default router;
+
