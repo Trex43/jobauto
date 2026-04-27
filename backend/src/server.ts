@@ -26,6 +26,7 @@ if (missingEnvVars.length > 0) {
 import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
 import profileRoutes from './routes/profile';
+import preferencesRoutes from './routes/preferences';
 import jobRoutes from './routes/job';
 import applicationRoutes from './routes/application';
 import subscriptionRoutes from './routes/subscription';
@@ -129,6 +130,7 @@ app.use('/api/webhooks', webhookRoutes); // Webhooks don't need auth
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/profile', profileRoutes);
+app.use('/api/preferences', preferencesRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/applications', applicationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
