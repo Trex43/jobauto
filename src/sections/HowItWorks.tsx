@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { gsap } from 'gsap';
 import { UserPlus, Link2, Sliders, Rocket } from 'lucide-react';
 
@@ -180,9 +181,12 @@ const HowItWorks = () => {
             Ready to automate your job search?{' '}
             <span className="text-white font-semibold">It takes less than 5 minutes to set up.</span>
           </p>
-          <button className="px-8 py-4 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white font-semibold rounded-xl hover:shadow-[0_0_30px_rgba(124,57,246,0.5)] transition-all hover:-translate-y-1">
+          <Link
+            to="/register"
+            className="inline-block px-8 py-4 bg-gradient-to-r from-[#7c39f6] to-[#a855f7] text-white font-semibold rounded-xl hover:shadow-[0_0_30px_rgba(124,57,246,0.5)] transition-all hover:-translate-y-1"
+          >
             Get Started Now
-          </button>
+          </Link>
         </div>
       </div>
     </section>
