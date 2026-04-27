@@ -71,9 +71,9 @@ const CTA = () => {
                 Get Started Free
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <button className="px-8 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 transition-all">
+              <a href="mailto:sales@jobauto.ai?subject=Demo%20Request" className="px-8 py-4 bg-white/5 border border-white/10 text-white font-semibold rounded-xl hover:bg-white/10 transition-all">
                 Schedule Demo
-              </button>
+              </a>
             </div>
 
             {/* Trust Indicators */}

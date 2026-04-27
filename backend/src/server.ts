@@ -33,6 +33,8 @@ import subscriptionRoutes from './routes/subscription';
 import adminRoutes from './routes/admin';
 import webhookRoutes from './routes/webhook';
 import aiRoutes from './routes/ai';
+import autoApplyRoutes from './routes/autoApply';
+import portalRoutes from './routes/portals';
 
 // Import middleware
 import { errorHandler } from './middleware/error';
@@ -136,6 +138,8 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/auto-apply', autoApplyRoutes);
+app.use('/api/portals', portalRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -14,6 +14,8 @@ import Dashboard from '@/pages/Dashboard';
 import Jobs from '@/pages/Jobs';
 import Applications from '@/pages/Applications';
 import Profile from '@/pages/Profile';
+import Preferences from '@/pages/Preferences';
+import Portals from '@/pages/Portals';
 
 function App() {
   return (
@@ -55,6 +57,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/preferences"
+            element={
+              <ProtectedRoute>
+                <Preferences />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/portals"
+            element={
+              <ProtectedRoute>
+                <Portals />
               </ProtectedRoute>
             }
           />
