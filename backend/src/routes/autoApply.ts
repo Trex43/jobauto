@@ -5,6 +5,20 @@ import { APIError, asyncHandler } from '../middleware/error';
 import { logger } from '../utils/logger';
 import { runAutoApplyForUser, runAutoApplyForAllUsers } from '../services/autoApply';
 
+interface MatchPreview {
+  job: {
+    id: string;
+    title: string;
+    company: string;
+    location: string | null;
+    remoteType: string | null;
+    salaryMin: number | null;
+    salaryMax: number | null;
+  };
+  matchScore: number;
+  matchReasons: string[];
+}
+
 const router = Router();
 
 /**
@@ -141,7 +155,7 @@ router.get('/matches', authenticate, asyncHandler(async (req, res) => {
   const userSkills = user.profile.skills.map((s) => s.name.toLowerCase());
   const minMatchScore = user.jobPreferences.minMatchScore || 50;
 
-  const matches = [];
+  const matches: MatchPreview[] = [];
   for (const job of jobs) {
     const jobSkills = (job.skillsRequired || []).map((s: string) => s.toLowerCase());
     const matchingSkills = jobSkills.filter((skill: string) =>
