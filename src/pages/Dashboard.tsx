@@ -62,7 +62,7 @@ export default function Dashboard() {
     try{
       const r=await api.post<{ applied: number }>('/auto-apply/run',{limit:5});
       if(r.success){
-        alert(`Auto-applied to ${r.data.applied} jobs!`);
+        alert(`Auto-applied to ${r.data?.applied ?? 0} jobs!`);
         const rs=await api.get<DashboardStats>('/applications/stats/overview');
         if(rs.success&&rs.data) setStats(rs.data);
         const as=await api.get('/auto-apply/status');
