@@ -2,8 +2,8 @@ import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, LogOut, Briefcase, Send, TrendingUp, User, Sliders, Link2,
-  Loader2, Search, MapPin, DollarSign, Filter, Star, ExternalLink,
-  CheckCircle, Rocket, Sparkles, X
+  Loader2, Search, MapPin, DollarSign, Filter, ExternalLink,
+  CheckCircle, Rocket, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';

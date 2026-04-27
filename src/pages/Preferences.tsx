@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, LogOut, Briefcase, Send, TrendingUp, User, Settings,
@@ -35,7 +35,6 @@ export default function PreferencesPage() {
   const [newRole, setNewRole] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [newIndustry, setNewIndustry] = useState('');
-  const [newCompanySize, setNewCompanySize] = useState('');
   const [newExcludedCompany, setNewExcludedCompany] = useState('');
   const [newExcludedKeyword, setNewExcludedKeyword] = useState('');
 

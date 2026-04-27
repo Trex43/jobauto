@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Zap, LogOut, Briefcase, Send, Clock, TrendingUp, User, Sliders, Link2, Rocket,
-  Loader2, CheckCircle, AlertCircle, Sparkles, MapPin, DollarSign, ChevronRight,
-  Target, Timer, Award, ArrowRight } from 'lucide-react';
+  Loader2, CheckCircle, AlertCircle, Sparkles, MapPin, ChevronRight,
+  Target, Timer, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
@@ -60,7 +60,7 @@ export default function Dashboard() {
   const runAA = async()=>{
     setRunningAA(true);
     try{
-      const r=await api.post('/auto-apply/run',{limit:5});
+      const r=await api.post<{ applied: number }>('/auto-apply/run',{limit:5});
       if(r.success){
         alert(`Auto-applied to ${r.data.applied} jobs!`);
         const rs=await api.get<DashboardStats>('/applications/stats/overview');

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, type ChangeEvent } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, LogOut, Briefcase, Send, TrendingUp, User, Sliders, Link2,
