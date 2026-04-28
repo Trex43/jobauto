@@ -16,17 +16,20 @@
 - [x] 9. Delete temp file `src/pages/Portals.tsx.jsontmpl_temp.txt`
 - [x] 10. Add React error boundary to `src/App.tsx` (`src/components/ErrorBoundary.tsx`)
 - [x] 11. Prisma schema updated with new fields (`tokenVersion`, `emailVerificationToken`, etc.)
+- [x] 12. Fix broken JSX in `src/pages/Preferences.tsx` — 15+ unclosed tags repaired
 
 ## VERIFICATION ✅
-- [x] 12. `prisma generate` executed — types regenerated successfully
-- [x] 13. Backend `tsc --noEmit` passes cleanly (0 errors)
+- [x] 13. `prisma generate` executed — types regenerated successfully
+- [x] 14. Backend `tsc --noEmit` passes cleanly (0 errors)
+- [x] 15. Committed & pushed to `blackboxai/fix-token-mismatch` branch
 
 ## DEPLOYMENT STEPS (Post-merge)
-- [ ] Run `prisma migrate dev` or `prisma migrate deploy` to apply schema changes to the database
-- [ ] Run frontend TypeScript check after deployment (`npx tsc --noEmit` in root)
+- [ ] Run `prisma migrate deploy` to apply schema changes to the production database
+- [ ] Trigger frontend deploy (Render auto-deploy should pick up the push)
 
 ## POTENTIAL FUTURE IMPROVEMENTS
 - [ ] Add frontend pages for `/verify-email` and `/reset-password` routes
 - [ ] Centralize `handleValidationErrors` import across all route files
 - [ ] Add Redis for token blacklisting instead of tokenVersion increment
 - [ ] Add rate limiting to the `/broadcast` endpoint
+
