@@ -8,6 +8,45 @@ export interface ApiResponse<T> {
   refreshToken?: string;
 }
 
+let isRefreshing = false;
+let refreshSubscribers: Array<(token: string) => void> = [];
+
+function onRefreshed(token: string) {
+  refreshSubscribers.forEach((cb) => cb(token));
+  refreshSubscribers = [];
+}
+
+function addRefreshSubscriber(cb: (token: string) => void) {
+  refreshSubscribers.push(cb);
+}
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_URL}/api/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.success && data.data?.tokens?.accessToken) {
+      localStorage.setItem('token', data.data.tokens.accessToken);
+      if (data.data.tokens.refreshToken) {
+        localStorage.setItem('refreshToken', data.data.tokens.refreshToken);
+      }
+      return data.data.tokens.accessToken;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 class ApiClient {
   private baseUrl: string;
 
@@ -17,7 +56,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    retry = true
   ): Promise<ApiResponse<T>> {
     const token = localStorage.getItem('token');
 
@@ -50,6 +90,53 @@ class ApiClient {
       }
 
       if (!response.ok) {
+        // Attempt token refresh on 401 if we haven't already retried
+        if (response.status === 401 && retry && token) {
+          if (!isRefreshing) {
+            isRefreshing = true;
+            const newToken = await refreshAccessToken();
+            isRefreshing = false;
+
+            if (newToken) {
+              onRefreshed(newToken);
+              // Retry original request with new token
+              return this.request<T>(endpoint, options, false);
+            } else {
+              // Refresh failed — clear auth state
+              localStorage.removeItem('token');
+              localStorage.removeItem('refreshToken');
+              window.location.href = '/login';
+              const error: any = new Error('Session expired. Please log in again.');
+              error.status = 401;
+              throw error;
+            }
+          } else {
+            // Wait for refresh to complete, then retry
+            return new Promise((resolve, reject) => {
+              addRefreshSubscriber((newToken) => {
+                const retryHeaders: Record<string, string> = {
+                  'Content-Type': 'application/json',
+                  ...((options.headers as Record<string, string>) || {}),
+                  Authorization: `Bearer ${newToken}`,
+                };
+                fetch(url, { ...options, headers: retryHeaders })
+                  .then(async (retryRes) => {
+                    const d = await retryRes.json().catch(() => ({}));
+                    if (!retryRes.ok) {
+                      const err: any = new Error(d.message || `HTTP ${retryRes.status}`);
+                      err.status = retryRes.status;
+                      err.data = d;
+                      reject(err);
+                    } else {
+                      resolve(d);
+                    }
+                  })
+                  .catch(reject);
+              });
+            });
+          }
+        }
+
         const error: any = new Error(data.message || `HTTP ${response.status}`);
         error.errors = data.errors || [];
         error.status = response.status;

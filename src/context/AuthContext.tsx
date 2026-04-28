@@ -52,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await api.post<{ user: User; token: string; refreshToken: string }>('/auth/login', {
+    const res = await api.post<{ user: User; tokens: { accessToken: string; refreshToken: string } }>('/auth/login', {
       email,
       password,
     });
@@ -61,20 +61,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(res.message || 'Login failed');
     }
 
-    localStorage.setItem('token', res.data.token);
-    localStorage.setItem('refreshToken', res.data.refreshToken);
+    localStorage.setItem('token', res.data.tokens.accessToken);
+    localStorage.setItem('refreshToken', res.data.tokens.refreshToken);
     setUser(res.data.user);
   };
 
   const register = async (data: RegisterData) => {
-    const res = await api.post<{ user: User; token: string; refreshToken: string }>('/auth/register', data);
+    const res = await api.post<{ user: User; tokens: { accessToken: string; refreshToken: string } }>('/auth/register', data);
 
     if (!res.success || !res.data) {
       throw new Error(res.message || 'Registration failed');
     }
 
-    localStorage.setItem('token', res.data.token);
-    localStorage.setItem('refreshToken', res.data.refreshToken);
+    localStorage.setItem('token', res.data.tokens.accessToken);
+    localStorage.setItem('refreshToken', res.data.tokens.refreshToken);
     setUser(res.data.user);
   };
 
