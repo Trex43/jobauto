@@ -34,8 +34,9 @@ enum ApplicationStatus {
   WITHDRAWN
 }
 
-// Job Portal Enum
+// Job Portal Enum — 50+ platforms
 enum JobPortal {
+  // General
   LINKEDIN
   INDEED
   GLASSDOOR
@@ -43,9 +44,67 @@ enum JobPortal {
   MONSTER
   CAREERBUILDER
   SIMPLYHIRED
-  ANGELLIST
+  GOOGLE_JOBS
+  SNAGAJOB
+  LINKUP
+
+  // Tech
   STACKOVERFLOW
   GITHUB
+  DICE
+  HIRED
+  ANGELLIST
+  WELLFOUND
+  CRUNCHBOARD
+  MASHABLE
+  PRODUCTHUNT
+  KEYVALUES
+  UNDERDOG
+  YCOMBINATOR
+  WHITETRUFFLE
+  GUN
+  TOPTAL
+
+  // Remote
+  REMOTE_CO
+  WEWORKREMOTELY
+  FLEXJOBS
+  REMOTIVE
+  WORKINGNOMADS
+  SKIPTHEDRIVE
+  VIRTUALVOCATIONS
+  JOBSPRESSO
+  OUTSITE
+  DYNAMITEJOBS
+
+  // MENA Region
+  BAYT
+  NAUKRI
+  GULFTALENT
+  WUZZUF
+  AKHTABOOT
+  NAUkrigulf
+  DUBAIZZLE
+  TANQEEB
+  MIHNA
+  HIREDDOTNET
+  LOOTAH
+  DRJOBS
+
+  // Startup
+  STARTUPHIRE
+  STARTUPJOBS
+  F6S
+  SEEDDB
+  VENTURELOOP
+
+  // Freelance
+  UPWORK
+  FREELANCER
+  FIVERR
+  PEOPLEPERHOUR
+  TOPTAL_FREELANCE
+
   OTHER
 }
 
@@ -63,7 +122,7 @@ model User {
   updatedAt         DateTime         @updatedAt
   lastLoginAt       DateTime?
   isActive          Boolean          @default(true)
-  
+
   // Relations
   profile           Profile?
   subscription      Subscription?
@@ -75,7 +134,7 @@ model User {
   notifications     Notification[]
   interviews        Interview[]
   analytics         UserAnalytics?
-  
+
   @@map("users")
 }
 
@@ -84,7 +143,7 @@ model Profile {
   id              String    @id @default(uuid())
   userId          String    @unique
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   // Personal Info
   phone           String?
   location        String?
@@ -92,31 +151,31 @@ model Profile {
   city            String?
   state           String?
   zipCode         String?
-  
+
   // Professional Info
   headline        String?
   summary         String?   @db.Text
   yearsOfExperience Int?
   currentTitle    String?
   currentCompany  String?
-  
+
   // Social Links
   linkedInUrl     String?
   githubUrl       String?
   portfolioUrl    String?
-  
+
   // AI Extracted Data
   skills          Skill[]
   experiences     Experience[]
   educations      Education[]
-  
+
   // Resume Upload
   resumeUrl       String?
   resumeText      String?   @db.Text
-  
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
+
   @@map("profiles")
 }
 
@@ -130,7 +189,7 @@ model Skill {
   proficiency Int?     // 1-10 scale
   isAiExtracted Boolean @default(false)
   createdAt   DateTime @default(now())
-  
+
   @@unique([profileId, name])
   @@map("skills")
 }
@@ -148,7 +207,7 @@ model Experience {
   isCurrent   Boolean  @default(false)
   description String?  @db.Text
   createdAt   DateTime @default(now())
-  
+
   @@map("experiences")
 }
 
@@ -165,7 +224,7 @@ model Education {
   isCurrent    Boolean  @default(false)
   gpa          String?
   createdAt    DateTime @default(now())
-  
+
   @@map("educations")
 }
 
@@ -175,25 +234,25 @@ model Subscription {
   userId            String           @unique
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   tier              SubscriptionTier @default(FREE)
-  
+
   // Stripe Integration
   stripeCustomerId  String?          @unique
   stripeSubscriptionId String?       @unique
   stripePriceId     String?
-  
+
   // Subscription Details
   currentPeriodStart DateTime?
   currentPeriodEnd   DateTime?
   cancelAtPeriodEnd  Boolean          @default(false)
   status            String?          // active, canceled, past_due, etc.
-  
+
   // Usage Tracking
   autoAppliesUsed   Int              @default(0)
   autoAppliesLimit  Int              @default(5) // 5 for free, unlimited for paid
-  
+
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
-  
+
   @@map("subscriptions")
 }
 
@@ -202,7 +261,7 @@ model JobPreference {
   id                String   @id @default(uuid())
   userId            String   @unique
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   // Job Preferences
   desiredRoles      String[] // Array of job titles
   desiredLocations  String[]
@@ -211,24 +270,30 @@ model JobPreference {
   maxSalary         Int?
   salaryCurrency    String   @default("USD")
   salaryPeriod      String   @default("yearly") // yearly, monthly, hourly
-  
+
   // Matching Preferences
   minMatchScore     Int      @default(50) // Minimum 50% match
   industryPreferences String[]
   companySizePreferences String[]
-  
+
   // Exclusions
   excludedCompanies String[]
   excludedKeywords  String[]
-  
+
   // Notification Settings
   emailNotifications Boolean @default(true)
   dailyDigest       Boolean  @default(true)
   instantAlerts     Boolean  @default(false)
-  
+
+  // New Fields (v2)
+  skills            String[] @default([])
+  experienceLevel   String?  // entry, mid, senior, lead, executive
+  resumeId          String?  // Selected default resume
+  autoApplyLimit    Int      @default(10) // Daily auto-apply cap
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
-  
+
   @@map("job_preferences")
 }
 
@@ -238,24 +303,24 @@ model PortalConnection {
   userId       String
   user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   portal       JobPortal
-  
+
   // OAuth/Connection Details
   accessToken  String?   @db.Text
   refreshToken String?   @db.Text
   tokenExpiry  DateTime?
-  
+
   // Connection Status
   isConnected  Boolean   @default(false)
   connectedAt  DateTime?
   lastSyncAt   DateTime?
-  
+
   // Portal Specific Data
   portalUserId String?
   profileUrl   String?
-  
+
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
-  
+
   @@unique([userId, portal])
   @@map("portal_connections")
 }
@@ -265,7 +330,7 @@ model Job {
   id              String   @id @default(uuid())
   externalId      String   @unique // ID from the source portal
   portal          JobPortal
-  
+
   // Job Details
   title           String
   company         String
@@ -278,26 +343,26 @@ model Job {
   salaryMax       Int?
   salaryCurrency  String   @default("USD")
   salaryPeriod    String   @default("yearly")
-  
+
   // Application URL
   applyUrl        String
   originalUrl     String
-  
+
   // AI Analysis
   skillsRequired  String[]
   matchScore      Float?   // AI calculated match score
-  
+
   // Metadata
   postedAt        DateTime?
   expiresAt       DateTime?
   isActive        Boolean  @default(true)
-  
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
+
   // Relations
   applications    Application[]
-  
+
   @@map("jobs")
 }
 
@@ -308,31 +373,31 @@ model Application {
   user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobId             String
   job               Job               @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  
+
   // Application Details
   status            ApplicationStatus @default(PENDING)
   appliedAt         DateTime?
   coverLetter       String?           @db.Text
   notes             String?           @db.Text
-  
+
   // AI Matching
   matchScore        Float?
   matchReasons      String[]          // Why this job matches
-  
+
   // Auto-Apply Details
   isAutoApplied     Boolean           @default(false)
   autoApplyConfig   Json?             // Configuration used for auto-apply
-  
+
   // Response Tracking
   responseReceivedAt DateTime?
   responseType      String?           // interview, rejection, offer
-  
+
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
-  
+
   // Relations
   interviews        Interview[]
-  
+
   @@unique([userId, jobId])
   @@map("applications")
 }
@@ -344,27 +409,27 @@ model Interview {
   application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   userId        String
   user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   // Interview Details
   scheduledAt   DateTime
   duration      Int         @default(60) // minutes
   type          String      // phone, video, onsite
   round         String      // screening, technical, behavioral, final
-  
+
   // Participants
   interviewerName  String?
   interviewerEmail String?
-  
+
   // Status
   status        String      @default("scheduled") // scheduled, completed, cancelled, no_show
-  
+
   // Notes & Prep
   notes         String?     @db.Text
   prepMaterials Json?       // AI generated prep materials
-  
+
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
-  
+
   @@map("interviews")
 }
 
@@ -373,26 +438,26 @@ model Resume {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   name        String
   description String?
   fileUrl     String
   fileType    String   // pdf, doc, docx
-  
+
   // AI Optimization
   isOptimized Boolean  @default(false)
   optimizedFor String? // Job type this resume is optimized for
   atsScore    Float?   // ATS compatibility score
-  
+
   // Version Control
   version     Int      @default(1)
   parentId    String?  // For tracking versions
-  
+
   isDefault   Boolean  @default(false)
-  
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@map("resumes")
 }
 
@@ -401,16 +466,16 @@ model ActivityLog {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   action      String   // auto_apply, manual_apply, interview_scheduled, etc.
   description String?
   metadata    Json?    // Additional context
-  
+
   ipAddress   String?
   userAgent   String?
-  
+
   createdAt   DateTime @default(now())
-  
+
   @@map("activity_logs")
 }
 
@@ -419,21 +484,21 @@ model Notification {
   id          String   @id @default(uuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   type        String   // application_update, interview_reminder, match_alert, etc.
   title       String
   message     String   @db.Text
-  
+
   // Status
   isRead      Boolean  @default(false)
   readAt      DateTime?
-  
+
   // Action
   actionUrl   String?
   actionText  String?
-  
+
   createdAt   DateTime @default(now())
-  
+
   @@map("notifications")
 }
 
@@ -442,26 +507,26 @@ model UserAnalytics {
   id                    String   @id @default(uuid())
   userId                String   @unique
   user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   // Application Stats
   totalApplications     Int      @default(0)
   successfulApplications Int     @default(0)
   interviewRate         Float    @default(0)
   offerRate             Float    @default(0)
-  
+
   // Activity Stats
   lastActiveAt          DateTime?
   totalLogins           Int      @default(0)
-  
+
   // AI Matching Stats
   averageMatchScore     Float    @default(0)
   totalMatches          Int      @default(0)
-  
+
   // Time Saved (in hours)
   estimatedTimeSaved    Float    @default(0)
-  
+
   updatedAt             DateTime @updatedAt
-  
+
   @@map("user_analytics")
 }
 
@@ -473,7 +538,7 @@ model SystemSetting {
   description String?
   isEncrypted Boolean  @default(false)
   updatedAt   DateTime @updatedAt
-  
+
   @@map("system_settings")
 }
 
@@ -487,6 +552,7 @@ model EmailTemplate {
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   @@map("email_templates")
 }
+

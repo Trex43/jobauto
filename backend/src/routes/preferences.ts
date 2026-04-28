@@ -32,7 +32,7 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
   });
 
   if (!preferences) {
-    // Create default preferences
+    // Create default preferences with new fields
     const newPrefs = await prisma.jobPreference.create({
       data: { userId },
     });
@@ -72,6 +72,11 @@ router.put(
     body('emailNotifications').optional().isBoolean(),
     body('dailyDigest').optional().isBoolean(),
     body('instantAlerts').optional().isBoolean(),
+    // New fields validation
+    body('skills').optional().isArray(),
+    body('experienceLevel').optional().isIn(['entry', 'mid', 'senior', 'lead', 'executive']),
+    body('resumeId').optional().trim(),
+    body('autoApplyLimit').optional().isInt({ min: 1, max: 100 }),
     handleValidationErrors,
   ],
   asyncHandler(async (req, res) => {

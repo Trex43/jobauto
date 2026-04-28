@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://jobauto-us7r.onrender.com';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -30,21 +30,44 @@ class ApiClient {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      ...options,
-      headers,
-    });
+    const url = `${this.baseUrl}${endpoint}`;
 
-    const data = await response.json().catch(() => ({}));
-
-    if (!response.ok) {
-      const error: any = new Error(data.message || `HTTP ${response.status}`);
-      error.errors = data.errors || [];
-      error.status = response.status;
-      throw error;
+    // Debug logging for VS Code webview / browser console
+    if (import.meta.env.DEV || import.meta.env.VITE_DEBUG_API) {
+      console.log(`[API] ${options.method || 'GET'} ${url}`);
     }
 
-    return data;
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (import.meta.env.DEV || import.meta.env.VITE_DEBUG_API) {
+        console.log(`[API] ${options.method || 'GET'} ${url} → ${response.status}`, data);
+      }
+
+      if (!response.ok) {
+        const error: any = new Error(data.message || `HTTP ${response.status}`);
+        error.errors = data.errors || [];
+        error.status = response.status;
+        error.data = data;
+        throw error;
+      }
+
+      return data;
+    } catch (err: any) {
+      // Network / CORS errors
+      if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        console.error(`[API] Network error: Cannot reach ${url}. Is the backend running?`);
+        const networkError: any = new Error('Network error: Cannot reach the server. Please ensure the backend is running.');
+        networkError.status = 0;
+        throw networkError;
+      }
+      throw err;
+    }
   }
 
   get<T>(endpoint: string) {
