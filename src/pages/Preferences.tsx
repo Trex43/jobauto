@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, LogOut, Briefcase, Send, TrendingUp, User, Settings,
   Plus, X, Save, Loader2, Sliders, MapPin, DollarSign, Building2, Ban,
-  Wrench, GraduationCap, FileText, Rocket, Sparkles
+  Wrench, GraduationCap, Rocket, Sparkles
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
