@@ -26,7 +26,6 @@ interface JobPreferences {
   emailNotifications: boolean;
   dailyDigest: boolean;
   instantAlerts: boolean;
-  // New fields
   skills: string[];
   experienceLevel: string | null;
   resumeId: string | null;
@@ -76,10 +75,8 @@ export default function PreferencesPage() {
     api.get<{ preferences: JobPreferences }>('/preferences')
       .then((res) => {
         if (res.success && res.data) {
-          // Merge with defaults to ensure new fields exist
           setPrefs({ ...DEFAULT_PREFS, ...res.data.preferences });
         } else {
-          // API returned success but no data — use defaults
           setPrefs({ ...DEFAULT_PREFS });
         }
       })
@@ -109,7 +106,7 @@ export default function PreferencesPage() {
 
     for (const key of allowedFields) {
       const value = data[key];
-      if (value === null) continue; // skip nulls so Prisma doesn't try to set them
+      if (value === null) continue;
       payload[key] = value;
     }
     return payload;
@@ -159,7 +156,7 @@ export default function PreferencesPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c39f6] to-[#a855f7] flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-bold">Job<span className="text-[#7c39f6]">Auto</span>
+            <span className="text-lg font-bold">Job<span className="text-[#7c39f6]">Auto</span></span>
           </Link>
         </div>
         <nav className="px-4 space-y-1 flex-1">
@@ -182,7 +179,7 @@ export default function PreferencesPage() {
       <main className="flex-1 p-8 overflow-auto">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl font-bold mb-2">Job Preferences</h1>
-          <p className="text-gray-400 mb-6">Define what you're looking for so our AI can find the best matches</p>
+          <p className="text-gray-400 mb-6">Define what you&apos;re looking for so our AI can find the best matches</p>
 
           {loading ? (
             <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-[#7c39f6]" /></div>
@@ -215,6 +212,7 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
+              </div>
 
               {/* Skills */}
               <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
@@ -237,6 +235,7 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
+              </div>
 
               {/* Locations */}
               <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
@@ -259,8 +258,9 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
+              </div>
 
-              {/* Remote, Salary, Experience Level, Auto-Apply Limit */}
+              {/* Grid: Work Preference, Experience Level, Salary Range, Auto-Apply Limit */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
                   <div className="flex items-center gap-2 mb-4">
@@ -321,6 +321,7 @@ export default function PreferencesPage() {
                       <option value="hourly">Hourly</option>
                     </select>
                   </div>
+                </div>
 
                 <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
                   <div className="flex items-center gap-2 mb-4">
@@ -338,6 +339,7 @@ export default function PreferencesPage() {
                   />
                   <p className="text-xs text-gray-500 mt-2">Free plan: up to 5/day. Upgrade for unlimited.</p>
                 </div>
+              </div>
 
               {/* Match Score */}
               <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
@@ -347,7 +349,7 @@ export default function PreferencesPage() {
                     className="flex-1 accent-[#7c39f6]" />
                   <span className="text-2xl font-bold text-[#7c39f6] w-16 text-center">{prefs.minMatchScore}%</span>
                 </div>
-                <p className="text-sm text-gray-400 mt-2">Jobs below this score won't be auto-applied. 50%+ recommended.</p>
+                <p className="text-sm text-gray-400 mt-2">Jobs below this score won&apos;t be auto-applied. 50%+ recommended.</p>
               </div>
 
               {/* Industries */}
@@ -371,6 +373,7 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
+              </div>
 
               {/* Exclusions */}
               <div className="grid grid-cols-2 gap-6">
@@ -394,6 +397,7 @@ export default function PreferencesPage() {
                       <Plus className="w-5 h-5" />
                     </button>
                   </div>
+                </div>
 
                 <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
                   <div className="flex items-center gap-2 mb-4">
@@ -415,6 +419,7 @@ export default function PreferencesPage() {
                       <Plus className="w-5 h-5" />
                     </button>
                   </div>
+                </div>
               </div>
 
               {/* Notifications */}
@@ -433,6 +438,7 @@ export default function PreferencesPage() {
                     </label>
                   ))}
                 </div>
+              </div>
 
               {/* Save */}
               <div className="flex justify-end pt-4">
@@ -442,6 +448,7 @@ export default function PreferencesPage() {
                   Save Preferences
                 </button>
               </div>
+            </div>
           ) : (
             <EmptyState
               icon={<Wrench className="w-12 h-12" />}
@@ -462,3 +469,4 @@ export default function PreferencesPage() {
     </div>
   );
 }
+
