@@ -32,6 +32,20 @@ const handleValidationErrors = (req: any, res: any, next: any) => {
 };
 
 /**
+ * Safely parse JSON from an AI response string
+ */
+const safeJsonParse = (jsonString: string | null | undefined): any => {
+  if (!jsonString) return null;
+  try {
+    // Sometimes GPT wraps JSON in markdown code blocks
+    const cleaned = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+    return JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+};
+
+/**
  * @route   POST /api/ai/match-job
  * @desc    Calculate match score between user and job
  * @access  Private
@@ -81,8 +95,8 @@ router.post(
       userSkills.some((userSkill) => userSkill.includes(skill) || skill.includes(userSkill))
     );
 
-    const skillScore = jobSkills.length > 0 
-      ? Math.round((matchingSkills.length / jobSkills.length) * 100) 
+    const skillScore = jobSkills.length > 0
+      ? Math.round((matchingSkills.length / jobSkills.length) * 100)
       : 0;
 
     // Use AI for advanced matching if OpenAI key is available
@@ -134,8 +148,9 @@ router.post(
           });
 
           const response = completion.choices[0]?.message?.content;
-          if (response) {
-            aiAnalysis = JSON.parse(response);
+          aiAnalysis = safeJsonParse(response);
+          if (!aiAnalysis) {
+            logger.warn('AI match response was not valid JSON');
           }
         }
       } catch (error) {
@@ -238,7 +253,10 @@ router.post(
         throw new APIError('AI optimization failed', 500);
       }
 
-      const optimization = JSON.parse(response);
+      const optimization = safeJsonParse(response);
+      if (!optimization) {
+        throw new APIError('AI returned invalid JSON', 500);
+      }
 
       res.json({
         success: true,
@@ -252,6 +270,7 @@ router.post(
         },
       });
     } catch (error) {
+      if (error instanceof APIError) throw error;
       logger.error('Resume optimization error:', error);
       throw new APIError('Failed to optimize resume', 500);
     }
@@ -318,7 +337,10 @@ router.post(
         throw new APIError('Skill extraction failed', 500);
       }
 
-      const extracted = JSON.parse(response);
+      const extracted = safeJsonParse(response);
+      if (!extracted) {
+        throw new APIError('AI returned invalid JSON', 500);
+      }
 
       // Save extracted skills to profile
       const profile = await prisma.profile.findUnique({
@@ -373,6 +395,7 @@ router.post(
         },
       });
     } catch (error) {
+      if (error instanceof APIError) throw error;
       logger.error('Skill extraction error:', error);
       throw new APIError('Failed to extract skills', 500);
     }
@@ -488,6 +511,7 @@ router.post(
         },
       });
     } catch (error) {
+      if (error instanceof APIError) throw error;
       logger.error('Cover letter generation error:', error);
       throw new APIError('Failed to generate cover letter', 500);
     }
@@ -567,7 +591,10 @@ router.post(
         throw new APIError('Interview prep generation failed', 500);
       }
 
-      const prepMaterials = JSON.parse(response);
+      const prepMaterials = safeJsonParse(response);
+      if (!prepMaterials) {
+        throw new APIError('AI returned invalid JSON', 500);
+      }
 
       res.json({
         success: true,
@@ -581,6 +608,7 @@ router.post(
         },
       });
     } catch (error) {
+      if (error instanceof APIError) throw error;
       logger.error('Interview prep generation error:', error);
       throw new APIError('Failed to generate interview prep', 500);
     }
@@ -649,7 +677,10 @@ router.post(
         throw new APIError('Salary insights generation failed', 500);
       }
 
-      const insights = JSON.parse(response);
+      const insights = safeJsonParse(response);
+      if (!insights) {
+        throw new APIError('AI returned invalid JSON', 500);
+      }
 
       res.json({
         success: true,
@@ -660,6 +691,7 @@ router.post(
         },
       });
     } catch (error) {
+      if (error instanceof APIError) throw error;
       logger.error('Salary insights generation error:', error);
       throw new APIError('Failed to generate salary insights', 500);
     }
@@ -667,4 +699,3 @@ router.post(
 );
 
 export default router;
-

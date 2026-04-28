@@ -59,10 +59,10 @@ router.put(
   [
     body('desiredRoles').optional().isArray(),
     body('desiredLocations').optional().isArray(),
-    body('remotePreference').optional().isIn(['remote', 'onsite', 'hybrid']),
-    body('minSalary').optional().isInt({ min: 0 }),
-    body('maxSalary').optional().isInt({ min: 0 }),
-    body('salaryCurrency').optional().trim(),
+    body('remotePreference').optional().custom((value) => value === null || ['remote', 'onsite', 'hybrid'].includes(value)),
+    body('minSalary').optional().custom((value) => value === null || (Number.isInteger(value) && value >= 0)),
+    body('maxSalary').optional().custom((value) => value === null || (Number.isInteger(value) && value >= 0)),
+    body('salaryCurrency').optional().isIn(['USD', 'EUR', 'GBP', 'KWD', 'AED', 'SAR', 'INR']),
     body('salaryPeriod').optional().isIn(['yearly', 'monthly', 'hourly']),
     body('minMatchScore').optional().isInt({ min: 0, max: 100 }),
     body('industryPreferences').optional().isArray(),
@@ -74,8 +74,8 @@ router.put(
     body('instantAlerts').optional().isBoolean(),
     // New fields validation
     body('skills').optional().isArray(),
-    body('experienceLevel').optional().isIn(['entry', 'mid', 'senior', 'lead', 'executive']),
-    body('resumeId').optional().trim(),
+    body('experienceLevel').optional().custom((value) => value === null || ['entry', 'mid', 'senior', 'lead', 'executive'].includes(value)),
+    body('resumeId').optional().custom((value) => value === null || (typeof value === 'string' && value.trim().length > 0)),
     body('autoApplyLimit').optional().isInt({ min: 1, max: 100 }),
     handleValidationErrors,
   ],
@@ -83,12 +83,21 @@ router.put(
     const userId = req.user!.userId;
     const updateData = req.body;
 
+    // Strip Prisma-managed fields to avoid unexpected errors
+    const {
+      id,
+      userId: _userId,
+      createdAt,
+      updatedAt,
+      ...safeUpdateData
+    } = updateData;
+
     const preferences = await prisma.jobPreference.upsert({
       where: { userId },
-      update: updateData,
+      update: safeUpdateData,
       create: {
         userId,
-        ...updateData,
+        ...safeUpdateData,
       },
     });
 
@@ -103,4 +112,3 @@ router.put(
 );
 
 export default router;
-

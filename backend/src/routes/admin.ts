@@ -4,6 +4,7 @@ import { prisma } from '../utils/prisma';
 import { authenticate, authorize } from '../middleware/auth';
 import { APIError, asyncHandler } from '../middleware/error';
 import { logger } from '../utils/logger';
+import { sendBroadcastEmail } from '../utils/email';
 
 const router = Router();
 
@@ -587,20 +588,53 @@ router.post(
       select: {
         id: true,
         email: true,
+        firstName: true,
       },
     });
 
-    // TODO: Implement actual broadcast logic
-    // For emails, use a queue system
-    // For notifications, create notification records
+    if (type === 'email') {
+      // Send emails in batches to avoid rate limits
+      const batchSize = 50;
+      let sentCount = 0;
+      let failedCount = 0;
 
-    logger.info(`Broadcast ${type} sent to ${users.length} users`);
+      for (let i = 0; i < users.length; i += batchSize) {
+        const batch = users.slice(i, i + batchSize);
+        const results = await Promise.allSettled(
+          batch.map((user) =>
+            sendBroadcastEmail(user.email, user.firstName, subject, message).catch(() => false)
+          )
+        );
+        sentCount += results.filter((r) => r.status === 'fulfilled' && r.value).length;
+        failedCount += results.filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value)).length;
+      }
 
-    res.json({
-      success: true,
-      message: `Broadcast queued for ${users.length} users`,
-      data: { recipientCount: users.length },
-    });
+      logger.info(`Broadcast email sent to ${sentCount}/${users.length} users (${failedCount} failed)`);
+
+      res.json({
+        success: true,
+        message: `Broadcast email sent to ${sentCount} users`,
+        data: { recipientCount: sentCount, failedCount, total: users.length },
+      });
+    } else {
+      // For notifications, create notification records
+      const notifications = await prisma.notification.createMany({
+        data: users.map((user) => ({
+          userId: user.id,
+          type: 'broadcast',
+          title: subject,
+          message,
+        })),
+      });
+
+      logger.info(`Broadcast notification created for ${notifications.count} users`);
+
+      res.json({
+        success: true,
+        message: `Broadcast notification sent to ${notifications.count} users`,
+        data: { recipientCount: notifications.count },
+      });
+    }
   })
 );
 

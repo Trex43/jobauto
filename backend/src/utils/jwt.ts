@@ -28,7 +28,7 @@ export const generateAccessToken = (payload: Omit<AccessTokenPayload, 'type'>): 
   return jwt.sign(
     { ...payload, type: 'access' },
     JWT_SECRET,
-{ expiresIn: JWT_EXPIRE as any }
+    { expiresIn: JWT_EXPIRE as any }
   );
 };
 
@@ -81,29 +81,41 @@ export const generateTokenPair = (user: {
 };
 
 /**
- * Store refresh token in database (for token rotation)
+ * Store refresh token in database by incrementing token version
  */
 export const storeRefreshToken = async (userId: string, token: string, expiresAt: Date) => {
-  // In a production app, you'd store this in Redis or a separate table
-  // For now, we'll just increment the token version on the user
   await prisma.user.update({
     where: { id: userId },
     data: {
-      // You could add a refreshTokens relation here
+      tokenVersion: { increment: 1 },
     },
   });
 };
 
 /**
- * Revoke all refresh tokens for a user
+ * Revoke all refresh tokens for a user by incrementing token version
  */
 export const revokeAllUserTokens = async (userId: string) => {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      // Increment token version to invalidate all existing refresh tokens
+      tokenVersion: { increment: 1 },
     },
   });
+};
+
+/**
+ * Validate refresh token version against database
+ */
+export const validateRefreshTokenVersion = async (
+  userId: string,
+  tokenVersion: number
+): Promise<boolean> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { tokenVersion: true },
+  });
+  return user?.tokenVersion === tokenVersion;
 };
 
 /**
