@@ -3,7 +3,7 @@ import { body, validationResult } from 'express-validator';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { prisma } from '../utils/prisma';
-import { generateTokenPair } from '../utils/jwt';
+import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../utils/email';
 import { authenticate } from '../middleware/auth';
 import { APIError, asyncHandler } from '../middleware/error';
@@ -69,10 +69,10 @@ router.post(
         password: hashedPassword,
         firstName,
         lastName,
+        emailVerificationToken: verificationToken,
+        emailVerificationExpires: verificationExpires,
         profile: {
-          create: {
-            // Empty profile, will be filled later
-          },
+          create: {},
         },
         subscription: {
           create: {
@@ -92,9 +92,6 @@ router.post(
         subscription: true,
       },
     });
-
-    // Store verification token (in production, use Redis or separate table)
-    // For now, we'll store it in the user's metadata or send directly
 
     // Send verification email
     try {
@@ -222,7 +219,6 @@ router.post('/refresh', asyncHandler(async (req, res) => {
   }
 
   try {
-    const { verifyRefreshToken } = await import('../utils/jwt');
     const decoded = verifyRefreshToken(refreshToken);
 
     // Find user
@@ -232,6 +228,11 @@ router.post('/refresh', asyncHandler(async (req, res) => {
 
     if (!user || !user.isActive) {
       throw new APIError('Invalid refresh token', 401);
+    }
+
+    // Validate token version
+    if (user.tokenVersion !== decoded.tokenVersion) {
+      throw new APIError('Refresh token has been revoked', 401);
     }
 
     // Generate new tokens
@@ -252,8 +253,11 @@ router.post('/refresh', asyncHandler(async (req, res) => {
  * @access  Private
  */
 router.post('/logout', authenticate, asyncHandler(async (req, res) => {
-  // In a production app, you might want to blacklist the token
-  // For now, we just return success and let the client clear the token
+  // Increment token version to invalidate all refresh tokens
+  await prisma.user.update({
+    where: { id: req.user!.userId },
+    data: { tokenVersion: { increment: 1 } },
+  });
 
   logger.info(`User logged out: ${req.user?.email}`);
 
@@ -290,8 +294,14 @@ router.post(
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
-    // Store reset token (in production, use Redis)
-    // For now, we'll just send the email
+    // Store reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: resetToken,
+        passwordResetExpires: resetExpires,
+      },
+    });
 
     // Send reset email
     try {
@@ -325,17 +335,34 @@ router.post(
   asyncHandler(async (req, res) => {
     const { token, password } = req.body;
 
-    // In production, verify token against Redis/storage
-    // For now, this is a placeholder implementation
+    // Find user by reset token
+    const user = await prisma.user.findFirst({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: { gt: new Date() },
+      },
+    });
+
+    if (!user) {
+      throw new APIError('Invalid or expired reset token', 400);
+    }
 
     // Hash new password
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Update password (you'd find user by token first)
-    // await prisma.user.update({ ... });
+    // Update password and clear reset token
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        passwordResetToken: null,
+        passwordResetExpires: null,
+        tokenVersion: { increment: 1 }, // Invalidate all existing refresh tokens
+      },
+    });
 
-    logger.info('Password reset successful');
+    logger.info(`Password reset successful for user: ${user.email}`);
 
     res.json({
       success: true,
@@ -355,14 +382,35 @@ router.post(
   asyncHandler(async (req, res) => {
     const { token } = req.body;
 
-    // In production, verify token against Redis/storage
-    // For now, this is a placeholder implementation
+    // Find user by verification token
+    const user = await prisma.user.findFirst({
+      where: {
+        emailVerificationToken: token,
+        emailVerificationExpires: { gt: new Date() },
+      },
+    });
 
-    // Find and update user
-    // const user = await prisma.user.update({ ... });
+    if (!user) {
+      throw new APIError('Invalid or expired verification token', 400);
+    }
+
+    // Update user as verified
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+        emailVerificationToken: null,
+        emailVerificationExpires: null,
+      },
+    });
 
     // Send welcome email
-    // await sendWelcomeEmail(user.email, user.firstName);
+    try {
+      await sendWelcomeEmail(user.email, user.firstName);
+    } catch (emailError) {
+      logger.error('Failed to send welcome email:', emailError);
+    }
 
     res.json({
       success: true,
@@ -455,10 +503,13 @@ router.post(
     const salt = await bcrypt.genSalt(12);
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
-    // Update password
+    // Update password and invalidate refresh tokens
     await prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: {
+        password: hashedPassword,
+        tokenVersion: { increment: 1 },
+      },
     });
 
     logger.info(`Password changed for user: ${user.email}`);

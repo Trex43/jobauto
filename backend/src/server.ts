@@ -71,11 +71,13 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    // In production, log blocked origins for debugging
+    // In production, reject unknown origins
     if (process.env.NODE_ENV === 'production') {
       console.warn(`CORS blocked origin: ${origin}`);
+      return callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
-    callback(null, true); // Allow all origins for now (adjust in production)
+    // In development, allow all origins
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],

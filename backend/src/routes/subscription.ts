@@ -133,7 +133,7 @@ router.get(
         subscription: {
           ...subscription,
           applicationsThisMonth,
-          remainingAutoApplies: subscription.tier === 'FREE' 
+          remainingAutoApplies: subscription.tier === 'FREE'
             ? Math.max(0, subscription.autoAppliesLimit - applicationsThisMonth)
             : 'unlimited',
         },
@@ -168,8 +168,8 @@ router.post(
     }
 
     // Get Stripe price ID
-    const priceId = plan === 'PROFESSIONAL' 
-      ? process.env.STRIPE_PRICE_PROFESSIONAL 
+    const priceId = plan === 'PROFESSIONAL'
+      ? process.env.STRIPE_PRICE_PROFESSIONAL
       : process.env.STRIPE_PRICE_ENTERPRISE;
 
     if (!priceId) {
@@ -181,54 +181,59 @@ router.post(
       throw new APIError('Payment service not available', 503);
     }
 
-    let customerId = user.subscription?.stripeCustomerId;
+    try {
+      let customerId = user.subscription?.stripeCustomerId;
 
-    // Create customer if doesn't exist
-    if (!customerId) {
-      const customer = await stripeClient.customers.create({
-        email: user.email,
-        name: `${user.firstName} ${user.lastName}`,
-        metadata: {
-          userId: user.id,
+      // Create customer if doesn't exist
+      if (!customerId) {
+        const customer = await stripeClient.customers.create({
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          metadata: {
+            userId: user.id,
+          },
+        });
+        customerId = customer.id;
+
+        // Update subscription with customer ID
+        await prisma.subscription.update({
+          where: { userId },
+          data: { stripeCustomerId: customerId },
+        });
+      }
+
+      // Create checkout session
+      const session = await stripeClient.checkout.sessions.create({
+        customer: customerId,
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price: priceId,
+            quantity: 1,
+          },
+        ],
+        mode: 'subscription',
+        success_url: `${process.env.CLIENT_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${process.env.CLIENT_URL}/subscription/cancel`,
+        subscription_data: {
+          metadata: {
+            userId: user.id,
+            plan,
+          },
         },
       });
-      customerId = customer.id;
 
-      // Update subscription with customer ID
-      await prisma.subscription.update({
-        where: { userId },
-        data: { stripeCustomerId: customerId },
+      res.json({
+        success: true,
+        data: {
+          sessionId: session.id,
+          url: session.url,
+        },
       });
+    } catch (stripeError: any) {
+      logger.error('Stripe checkout error:', stripeError);
+      throw new APIError(stripeError.message || 'Payment processing failed', 500);
     }
-
-    // Create checkout session
-    const session = await stripeClient.checkout.sessions.create({
-      customer: customerId,
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: `${process.env.CLIENT_URL}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/subscription/cancel`,
-      subscription_data: {
-        metadata: {
-          userId: user.id,
-          plan,
-        },
-      },
-    });
-
-    res.json({
-      success: true,
-      data: {
-        sessionId: session.id,
-        url: session.url,
-      },
-    });
   })
 );
 
@@ -256,23 +261,28 @@ router.post(
       throw new APIError('Payment service not available', 503);
     }
 
-    // Cancel at period end
-    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
-      cancel_at_period_end: true,
-    });
+    try {
+      // Cancel at period end
+      await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
+        cancel_at_period_end: true,
+      });
 
-    // Update local record
-    await prisma.subscription.update({
-      where: { userId },
-      data: { cancelAtPeriodEnd: true },
-    });
+      // Update local record
+      await prisma.subscription.update({
+        where: { userId },
+        data: { cancelAtPeriodEnd: true },
+      });
 
-    logger.info(`Subscription cancelled for user: ${userId}`);
+      logger.info(`Subscription cancelled for user: ${userId}`);
 
-    res.json({
-      success: true,
-      message: 'Subscription will be cancelled at the end of the billing period',
-    });
+      res.json({
+        success: true,
+        message: 'Subscription will be cancelled at the end of the billing period',
+      });
+    } catch (stripeError: any) {
+      logger.error('Stripe cancel error:', stripeError);
+      throw new APIError(stripeError.message || 'Failed to cancel subscription', 500);
+    }
   })
 );
 
@@ -300,23 +310,28 @@ router.post(
       throw new APIError('Payment service not available', 503);
     }
 
-    // Reactivate subscription
-    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
-      cancel_at_period_end: false,
-    });
+    try {
+      // Reactivate subscription
+      await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
+        cancel_at_period_end: false,
+      });
 
-    // Update local record
-    await prisma.subscription.update({
-      where: { userId },
-      data: { cancelAtPeriodEnd: false },
-    });
+      // Update local record
+      await prisma.subscription.update({
+        where: { userId },
+        data: { cancelAtPeriodEnd: false },
+      });
 
-    logger.info(`Subscription reactivated for user: ${userId}`);
+      logger.info(`Subscription reactivated for user: ${userId}`);
 
-    res.json({
-      success: true,
-      message: 'Subscription reactivated successfully',
-    });
+      res.json({
+        success: true,
+        message: 'Subscription reactivated successfully',
+      });
+    } catch (stripeError: any) {
+      logger.error('Stripe reactivate error:', stripeError);
+      throw new APIError(stripeError.message || 'Failed to reactivate subscription', 500);
+    }
   })
 );
 
@@ -344,15 +359,20 @@ router.post(
       throw new APIError('Payment service not available', 503);
     }
 
-    const session = await stripeClient.billingPortal.sessions.create({
-      customer: subscription.stripeCustomerId,
-      return_url: `${process.env.CLIENT_URL}/settings/billing`,
-    });
+    try {
+      const session = await stripeClient.billingPortal.sessions.create({
+        customer: subscription.stripeCustomerId,
+        return_url: `${process.env.CLIENT_URL}/settings/billing`,
+      });
 
-    res.json({
-      success: true,
-      data: { url: session.url },
-    });
+      res.json({
+        success: true,
+        data: { url: session.url },
+      });
+    } catch (stripeError: any) {
+      logger.error('Stripe billing portal error:', stripeError);
+      throw new APIError(stripeError.message || 'Failed to create billing portal', 500);
+    }
   })
 );
 
@@ -386,25 +406,33 @@ router.get(
       });
     }
 
-    const invoices = await stripeClient.invoices.list({
-      customer: subscription.stripeCustomerId,
-      limit: 24,
-    });
+    try {
+      const invoices = await stripeClient.invoices.list({
+        customer: subscription.stripeCustomerId,
+        limit: 24,
+      });
 
-    res.json({
-      success: true,
-      data: {
-        invoices: invoices.data.map((invoice) => ({
-          id: invoice.id,
-          number: invoice.number,
-          amount: invoice.amount_paid / 100,
-          currency: invoice.currency,
-          status: invoice.status,
-          date: new Date(invoice.created * 1000),
-          pdfUrl: invoice.invoice_pdf,
-        })),
-      },
-    });
+      res.json({
+        success: true,
+        data: {
+          invoices: invoices.data.map((invoice) => ({
+            id: invoice.id,
+            number: invoice.number,
+            amount: invoice.amount_paid / 100,
+            currency: invoice.currency,
+            status: invoice.status,
+            date: new Date(invoice.created * 1000),
+            pdfUrl: invoice.invoice_pdf,
+          })),
+        },
+      });
+    } catch (stripeError: any) {
+      logger.error('Stripe invoices error:', stripeError);
+      return res.json({
+        success: true,
+        data: { invoices: [] },
+      });
+    }
   })
 );
 
@@ -445,31 +473,37 @@ router.post(
       throw new APIError('Payment service not available', 503);
     }
 
-    // Update subscription
-    await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
-      items: [
-        {
-          id: (await stripeClient.subscriptions.retrieve(subscription.stripeSubscriptionId)).items.data[0].id,
-          price: newPriceId,
-        },
-      ],
-      proration_behavior: 'create_prorations',
-    });
+    try {
+      const stripeSub = await stripeClient.subscriptions.retrieve(subscription.stripeSubscriptionId);
 
-    // Update local record
-    await prisma.subscription.update({
-      where: { userId },
-      data: { tier: plan },
-    });
+      // Update subscription
+      await stripeClient.subscriptions.update(subscription.stripeSubscriptionId, {
+        items: [
+          {
+            id: stripeSub.items.data[0].id,
+            price: newPriceId,
+          },
+        ],
+        proration_behavior: 'create_prorations',
+      });
 
-    logger.info(`Subscription upgraded to ${plan} for user: ${userId}`);
+      // Update local record
+      await prisma.subscription.update({
+        where: { userId },
+        data: { tier: plan },
+      });
 
-    res.json({
-      success: true,
-      message: `Subscription upgraded to ${plan} successfully`,
-    });
+      logger.info(`Subscription upgraded to ${plan} for user: ${userId}`);
+
+      res.json({
+        success: true,
+        message: `Subscription upgraded to ${plan} successfully`,
+      });
+    } catch (stripeError: any) {
+      logger.error('Stripe upgrade error:', stripeError);
+      throw new APIError(stripeError.message || 'Failed to upgrade subscription', 500);
+    }
   })
 );
 
 export default router;
-

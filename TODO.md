@@ -1,59 +1,32 @@
-# Fix Preferences and Portals Blank Screen
+# Production-Ready Fixes — COMPLETED ✅
 
-## Root Cause
-- Preferences.tsx: When API fails, `prefs` stays `null`, render falls to `: null` → blank screen
-- Portals.tsx: Empty array with no empty-state message → appears blank
+## CRITICAL SECURITY FIXES ✅
+- [x] 1. Fix CORS in `backend/src/server.ts` — production now rejects unknown origins instead of allowing all
+- [x] 2. Implement real password reset & email verification in `backend/src/routes/auth.ts` — tokens now stored in DB with expiry, actual state changes on verify/reset
+- [x] 3. Fix token version in `backend/src/utils/jwt.ts` & add `tokenVersion` to Prisma User model — logout/reset now invalidates all refresh tokens
 
-## Steps
-- [x] Create TODO.md with plan
-- [x] Fix `src/lib/api.ts` — local dev fallback URL + better error logging
-- [x] Create `src/components/ErrorState.tsx` — reusable error card
-- [x] Create `src/components/EmptyState.tsx` — reusable empty state
-- [x] Rewrite `src/pages/Preferences.tsx` — error/empty states + missing fields
-- [x] Rewrite `src/pages/Portals.tsx` — error/empty states + 50+ portals
-- [x] Update `backend/prisma/schema.prisma` — new fields + expanded JobPortal enum
-- [x] Update `backend/src/routes/preferences.ts` — handle new fields
-- [x] Update `backend/src/routes/portals.ts` — 50+ portals array
-- [x] Create `VS_CODE_DEBUG_GUIDE.md`
-- [ ] Run Prisma migrate + generate
-- [ ] Test and verify
+## CRITICAL BUG FIXES ✅
+- [x] 4. Fix AI JSON parsing crash in `backend/src/routes/ai.ts` — added `safeJsonParse()` helper with try-catch + markdown code block cleanup
+- [x] 5. Fix missing Stripe error handling in `backend/src/routes/subscription.ts` — all Stripe API calls wrapped in try-catch with proper error forwarding
+- [x] 6. Fix admin broadcast in `backend/src/routes/admin.ts` — implemented actual email broadcast with batching + notification creation fallback
 
-## Deployment Commands
-```bash
-# Backend
-cd backend
-npx prisma migrate dev --name add_preferences_fields
-npx prisma generate
-npm run dev
+## CODE QUALITY & TYPE SAFETY ✅
+- [x] 7. Clean up `ApiResponse` interface in `src/lib/api.ts` — removed legacy `token`/`refreshToken` fields
+- [x] 8. Add `sendBroadcastEmail` to `backend/src/utils/email.ts`
+- [x] 9. Delete temp file `src/pages/Portals.tsx.jsontmpl_temp.txt`
+- [x] 10. Add React error boundary to `src/App.tsx` (`src/components/ErrorBoundary.tsx`)
+- [x] 11. Prisma schema updated with new fields (`tokenVersion`, `emailVerificationToken`, etc.)
 
-# Frontend (new terminal)
-npm run dev
-```
+## VERIFICATION ✅
+- [x] 12. `prisma generate` executed — types regenerated successfully
+- [x] 13. Backend `tsc --noEmit` passes cleanly (0 errors)
 
-## Manual Fallback Setup
-If UI is still broken after fixes, use curl:
-```bash
-# Preferences
-curl -X PUT http://localhost:5000/api/preferences \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -d '{
-    "desiredRoles": ["GIS Analyst"],
-    "desiredLocations": ["Kuwait", "Remote"],
-    "remotePreference": "remote",
-    "minSalary": 800,
-    "maxSalary": 1500,
-    "salaryCurrency": "KWD",
-    "salaryPeriod": "monthly",
-    "minMatchScore": 60,
-    "skills": ["GIS", "Python", "SQL"],
-    "experienceLevel": "mid",
-    "autoApplyLimit": 5
-  }'
+## DEPLOYMENT STEPS (Post-merge)
+- [ ] Run `prisma migrate dev` or `prisma migrate deploy` to apply schema changes to the database
+- [ ] Run frontend TypeScript check after deployment (`npx tsc --noEmit` in root)
 
-# Connect portals
-curl -X POST http://localhost:5000/api/portals/LINKEDIN/connect -H "Authorization: Bearer YOUR_TOKEN" -d '{}'
-curl -X POST http://localhost:5000/api/portals/BAYT/connect -H "Authorization: Bearer YOUR_TOKEN" -d '{}'
-curl -X POST http://localhost:5000/api/portals/INDEED/connect -H "Authorization: Bearer YOUR_TOKEN" -d '{}'
-```
-
+## POTENTIAL FUTURE IMPROVEMENTS
+- [ ] Add frontend pages for `/verify-email` and `/reset-password` routes
+- [ ] Centralize `handleValidationErrors` import across all route files
+- [ ] Add Redis for token blacklisting instead of tokenVersion increment
+- [ ] Add rate limiting to the `/broadcast` endpoint

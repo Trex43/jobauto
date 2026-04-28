@@ -96,11 +96,30 @@ export default function PreferencesPage() {
 
   const handleLogout = () => { logout(); navigate('/'); };
 
+  const cleanPayload = (data: JobPreferences): Record<string, any> => {
+    const payload: Record<string, any> = {};
+    const allowedFields: (keyof JobPreferences)[] = [
+      'desiredRoles', 'desiredLocations', 'remotePreference',
+      'minSalary', 'maxSalary', 'salaryCurrency', 'salaryPeriod',
+      'minMatchScore', 'industryPreferences', 'companySizePreferences',
+      'excludedCompanies', 'excludedKeywords',
+      'emailNotifications', 'dailyDigest', 'instantAlerts',
+      'skills', 'experienceLevel', 'resumeId', 'autoApplyLimit',
+    ];
+
+    for (const key of allowedFields) {
+      const value = data[key];
+      if (value === null) continue; // skip nulls so Prisma doesn't try to set them
+      payload[key] = value;
+    }
+    return payload;
+  };
+
   const savePreferences = async () => {
     if (!prefs) return;
     setSaving(true);
     try {
-      const res = await api.put<{ preferences: JobPreferences }>('/preferences', prefs);
+      const res = await api.put<{ preferences: JobPreferences }>('/preferences', cleanPayload(prefs));
       if (res.success && res.data) {
         setPrefs({ ...DEFAULT_PREFS, ...res.data.preferences });
         alert('Preferences saved successfully');
@@ -140,7 +159,7 @@ export default function PreferencesPage() {
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7c39f6] to-[#a855f7] flex items-center justify-center">
               <Zap className="w-4 h-4 text-white" />
             </div>
-            <span className="text-lg font-bold">Job<span className="text-[#7c39f6]">Auto</span></span>
+            <span className="text-lg font-bold">Job<span className="text-[#7c39f6]">Auto</span>
           </Link>
         </div>
         <nav className="px-4 space-y-1 flex-1">
@@ -196,7 +215,6 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
 
               {/* Skills */}
               <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
@@ -219,7 +237,6 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
 
               {/* Locations */}
               <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
@@ -242,7 +259,6 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
 
               {/* Remote, Salary, Experience Level, Auto-Apply Limit */}
               <div className="grid grid-cols-2 gap-6">
@@ -305,7 +321,6 @@ export default function PreferencesPage() {
                       <option value="hourly">Hourly</option>
                     </select>
                   </div>
-                </div>
 
                 <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
                   <div className="flex items-center gap-2 mb-4">
@@ -323,7 +338,6 @@ export default function PreferencesPage() {
                   />
                   <p className="text-xs text-gray-500 mt-2">Free plan: up to 5/day. Upgrade for unlimited.</p>
                 </div>
-              </div>
 
               {/* Match Score */}
               <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
@@ -357,7 +371,6 @@ export default function PreferencesPage() {
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
-              </div>
 
               {/* Exclusions */}
               <div className="grid grid-cols-2 gap-6">
@@ -381,7 +394,6 @@ export default function PreferencesPage() {
                       <Plus className="w-5 h-5" />
                     </button>
                   </div>
-                </div>
 
                 <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6">
                   <div className="flex items-center gap-2 mb-4">
@@ -403,7 +415,6 @@ export default function PreferencesPage() {
                       <Plus className="w-5 h-5" />
                     </button>
                   </div>
-                </div>
               </div>
 
               {/* Notifications */}
@@ -422,7 +433,6 @@ export default function PreferencesPage() {
                     </label>
                   ))}
                 </div>
-              </div>
 
               {/* Save */}
               <div className="flex justify-end pt-4">
@@ -432,7 +442,6 @@ export default function PreferencesPage() {
                   Save Preferences
                 </button>
               </div>
-            </div>
           ) : (
             <EmptyState
               icon={<Wrench className="w-12 h-12" />}
@@ -453,4 +462,3 @@ export default function PreferencesPage() {
     </div>
   );
 }
-

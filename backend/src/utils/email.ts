@@ -354,3 +354,58 @@ export const sendApplicationConfirmation = async (
     html,
   });
 };
+
+/**
+ * Send broadcast email to multiple users
+ */
+export const sendBroadcastEmail = async (
+  email: string,
+  firstName: string,
+  subject: string,
+  message: string
+): Promise<boolean> => {
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${subject}</title>
+      <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #7c39f6, #a855f7); padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .header h1 { color: white; margin: 0; font-size: 24px; }
+        .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
+        .message { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .footer { text-align: center; margin-top: 30px; color: #6b7280; font-size: 14px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>${subject}</h1>
+        </div>
+        <div class="content">
+          <h2>Hi ${firstName},</h2>
+          <div class="message">
+            <p>${message.replace(/\n/g, '<br>')}</p>
+          </div>
+          <p>You can manage your notification preferences in your <a href="${process.env.CLIENT_URL}/preferences">account settings</a>.</p>
+        </div>
+        <div class="footer">
+          <p>&copy; 2024 JobAuto. All rights reserved.</p>
+          <p>Apply to 100+ jobs while you sleep.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `${subject} - JobAuto`,
+    html,
+    text: message,
+  });
+};
