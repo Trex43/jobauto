@@ -2,8 +2,7 @@ import { useEffect, useState, useMemo, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, LogOut, Briefcase, Send, TrendingUp, User, Sliders,
-  Link2, Loader2, RefreshCw, Check, Globe, AlertTriangle,
-  Filter, Search
+  Link2, Loader2, RefreshCw, Check, Globe, Search
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
