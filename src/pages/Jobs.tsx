@@ -55,7 +55,8 @@ export default function JobsPage() {
   const [filters, setFilters] = useState<JobFilters>({
     search: '', location: '', remote: '', minSalary: '', maxSalary: '', portal: '', skills: '', sortByMatch: true,
   });
-  const [activeTab, setActiveTab] = useState<'all' | 'recommended'>('recommended');
+  const [activeTab, setActiveTab] = useState<'all' | 'recommended' | 'it'>('recommended');
+  const [syncing, setSyncing] = useState(false);
 
   const fetchJobs = async (p = page, f = filters) => {
     setLoading(true);
@@ -70,6 +71,7 @@ export default function JobsPage() {
     if (f.portal) params.set('portal', f.portal);
     if (f.skills) params.set('skills', f.skills);
     if (f.sortByMatch) params.set('sortByMatch', 'true');
+    if (activeTab === 'it') params.set('tab', 'it');
 
     try {
       const res = await api.get<{ jobs: Job[]; pagination: { page: number; limit: number; total: number; pages: number } }>(`/jobs?${params.toString()}`);
@@ -216,6 +218,32 @@ export default function JobsPage() {
                 }`}
               >
                 All Jobs
+              </button>
+              <button
+                onClick={() => setActiveTab('it')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  activeTab === 'it' ? 'bg-[#7c39f6] text-white' : 'bg-[#13131f] text-gray-400 hover:text-white'
+                }`}
+              >
+                IT Jobs
+              </button>
+              <button
+                onClick={async () => {
+                  setSyncing(true);
+                  try {
+                    await api.post('/jobs/sync');
+                    fetchJobs(1);
+                  } catch (err) {
+                    alert('Sync failed');
+                  } finally {
+                    setSyncing(false);
+                  }
+                }}
+                disabled={syncing}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white font-medium rounded-lg hover:shadow-lg disabled:opacity-50 flex items-center gap-1 text-sm"
+              >
+                {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                Sync
               </button>
             </div>
           </div>
