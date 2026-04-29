@@ -162,13 +162,7 @@ export async function syncJobs(limit: number = 200): Promise<{ synced: number; t
 
   await prisma.job.createMany({
     data: createData,
-    skipDuplicates: true,
-    update: {
-      // On duplicate, update fields
-      title: true,
-      company: true,
-      // ... etc
-    }
+    skipDuplicates: true
   });
 
   // Set lastSyncedAt on all new/updated
