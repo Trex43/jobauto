@@ -55,8 +55,15 @@ async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
       return await fetchRemoteOKJobs();
     case 'arbeitnow':
       return await fetchArbeitnowJobs();
+    case 'themuse':
+      const { fetchTheMuseJobs } = await import('./jobSources/themuse');
+      return await fetchTheMuseJobs();
+    case 'indeed':
+      const { fetchIndeedJobs } = await import('./jobSources/indeed');
+      return await fetchIndeedJobs();
     default:
-      throw new Error(`Unknown source: ${source}`);
+      logger.warn(`Source ${source} not implemented yet, skipping`);
+      return [];
   }
 }
 
@@ -104,6 +111,7 @@ const PORTAL_SOURCE_MAP: Record<string, string> = {
   'ARBEITNOW': 'arbeitnow',
   'THEMUSE': 'themuse',
   'INDEED': 'indeed',
+  'LINKEDIN': 'linkedin', // Stub for future
   // Add more later
 };
 
