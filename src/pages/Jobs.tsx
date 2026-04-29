@@ -231,7 +231,7 @@ export default function JobsPage() {
                 onClick={async () => {
                   setSyncing(true);
                   try {
-                    await api.post('/jobs/sync');
+                    await api.post('/jobs/sync', {});
                     fetchJobs(1);
                   } catch (err) {
                     alert('Sync failed');
