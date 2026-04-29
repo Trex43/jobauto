@@ -97,33 +97,57 @@ export function deduplicateJobs(jobs: NormalizedJob[]): NormalizedJob[] {
   });
 }
 
-// Main sync function
-export async function syncJobs(limit: number = 200): Promise<{ synced: number; total: number }> {
-  logger.info('Starting job sync...');
+// Portal to source mapping (add more as we implement sources)
+const PORTAL_SOURCE_MAP: Record<string, string> = {
+  'REMOTIVE': 'remotive',
+  'REMOTEOK': 'remoteok',
+  'ARBEITNOW': 'arbeitnow',
+  'THEMUSE': 'themuse',
+  'INDEED': 'indeed',
+  // Add more later
+};
 
-  // Check if recent sync
-  const recent = await prisma.job.findFirst({
-    where: { lastSyncedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
-    orderBy: { lastSyncedAt: 'desc' }
+// User-aware sync - only from connected portals
+export async function syncUserJobs(userId: string, limit: number = 200): Promise<{ synced: number; total: number }> {
+  logger.info(`Starting user-specific job sync for user ${userId}...`);
+
+  // Get user's connected portals
+  const connections = await prisma.portalConnection.findMany({
+    where: { 
+      userId,
+      isConnected: true 
+    },
   });
-  if (recent) {
-    logger.info('Recent sync found, skipping');
-    return { synced: 0, total: await prisma.job.count() };
+
+  if (connections.length === 0) {
+    logger.warn(`No connected portals for user ${userId}`);
+    return { synced: 0, total: await prisma.job.count({ where: { isActive: true } }) };
   }
 
-  const sources = ['remotive', 'remoteok', 'arbeitnow'];
+  // Map portals to available sources
+  const availableSources = connections
+    .map(c => PORTAL_SOURCE_MAP[c.portal])
+    .filter(Boolean) as string[];
+
+  if (availableSources.length === 0) {
+    logger.warn(`No fetchable sources for user ${userId} portals:`, connections.map(c => c.portal));
+    return { synced: 0, total: await prisma.job.count({ where: { isActive: true } }) };
+  }
+
+  logger.info(`Syncing from sources: ${availableSources.join(', ')}`);
+
   const allRawJobs: RawJob[] = [];
 
-  // Fetch parallel
+  // Fetch parallel from user's sources
   await Promise.all(
-    sources.map(async (source) => {
+    availableSources.map(async (source) => {
       const jobs = await fetchJobsFromSource(source);
       allRawJobs.push(...jobs.map(j => ({ ...j, source })));
     })
   );
 
   if (allRawJobs.length === 0) {
-    logger.warn('No jobs fetched from any source');
+    logger.warn(`No jobs from sources for user ${userId}`);
     return { synced: 0, total: 0 };
   }
 
@@ -133,17 +157,17 @@ export async function syncJobs(limit: number = 200): Promise<{ synced: number; t
 
   const deduped = deduplicateJobs(normalized);
   
-  // Upsert batch with transactions
+  // Upsert to DB (user jobs mixed, but tagged by source)
   const createData = deduped.map(job => ({
     externalId: job.externalId,
-  portal: 'OTHER' as const,
+    portal: 'OTHER' as const,
     title: job.title,
     company: job.company,
     companyLogo: job.companyLogo,
     location: job.location,
     remoteType: job.remoteType,
     description: job.description,
-    requirements: '', // Not available
+    requirements: '', 
     salaryMin: job.salaryMin,
     salaryMax: job.salaryMax,
     salaryCurrency: job.salaryCurrency,
@@ -165,12 +189,17 @@ export async function syncJobs(limit: number = 200): Promise<{ synced: number; t
     skipDuplicates: true
   });
 
-  // Set lastSyncedAt on all new/updated
   await prisma.$executeRaw`UPDATE "Job" SET "lastSyncedAt" = NOW() WHERE "lastSyncedAt" IS NULL OR "lastSyncedAt" < NOW() - INTERVAL '24 hours'`;
 
   const total = await prisma.job.count({ where: { isActive: true } });
-  logger.info(`Synced ${deduped.length} jobs, total active: ${total}`);
+  logger.info(`User ${userId} sync complete: ${deduped.length} jobs, total active: ${total}`);
 
   return { synced: deduped.length, total };
+}
+
+// Legacy global sync (deprecated, kept for fallback)
+export async function syncJobs(limit: number = 200): Promise<{ synced: number; total: number }> {
+  logger.warn('Global syncJobs called - use syncUserJobs instead');
+  return await syncUserJobs('GLOBAL_FALLBACK', limit);
 }
 

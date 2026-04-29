@@ -4,7 +4,8 @@ import { prisma } from '../utils/prisma';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { APIError, asyncHandler } from '../middleware/error';
 import { logger } from '../utils/logger';
-import { syncJobs } from '../services/jobAggregator';
+import { syncUserJobs, syncJobs } from '../services/jobAggregator';
+
 
 const router = Router();
 
@@ -29,15 +30,17 @@ router.post(
   '/sync',
   authenticate,
   asyncHandler(async (req, res) => {
+    const userId = req.user!.userId;
     const { limit } = req.body;
-    const result = await syncJobs(limit || 200);
+    const result = await syncUserJobs(userId, limit || 200);
     res.json({
       success: true,
-      message: `Synced ${result.synced} jobs`,
+      message: `Synced ${result.synced} jobs from your portals`,
       data: result,
     });
   })
 );
+
 
 /**
  * @route   GET /api/jobs
@@ -61,10 +64,10 @@ router.get(
     handleValidationErrors,
   ],
   asyncHandler(async (req, res) => {
-    // Auto-sync if empty DB
+    // Auto-sync if empty DB (global fallback)
     const jobCount = await prisma.job.count({ where: { isActive: true } });
     if (jobCount === 0 && req.query.nosync !== 'true') {
-      logger.info('No jobs found, auto-syncing...');
+      logger.info('No jobs found, global auto-syncing fallback...');
       await syncJobs(100);
     }
     const page = parseInt(req.query.page as string) || 1;
