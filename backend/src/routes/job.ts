@@ -4,6 +4,7 @@ import { prisma } from '../utils/prisma';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { APIError, asyncHandler } from '../middleware/error';
 import { logger } from '../utils/logger';
+import { syncJobs } from '../services/jobAggregator';
 
 const router = Router();
 
@@ -20,8 +21,27 @@ const handleValidationErrors = (req: any, res: any, next: any) => {
 };
 
 /**
+ * @route   POST /api/jobs/sync
+ * @desc    Manual sync jobs from APIs
+ * @access  Private
+ */
+router.post(
+  '/sync',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const { limit } = req.body;
+    const result = await syncJobs(limit || 200);
+    res.json({
+      success: true,
+      message: `Synced ${result.synced} jobs`,
+      data: result,
+    });
+  })
+);
+
+/**
  * @route   GET /api/jobs
- * @desc    Get jobs with filtering and pagination
+ * @desc    Get jobs with filtering and pagination + tabs
  * @access  Public
  */
 router.get(
@@ -36,13 +56,22 @@ router.get(
     query('minSalary').optional().isInt(),
     query('maxSalary').optional().isInt(),
     query('portal').optional(),
+    query('tab').optional().isIn(['all', 'recommended', 'it']),
+    query('nosync').optional().isBoolean(),
     handleValidationErrors,
   ],
   asyncHandler(async (req, res) => {
+    // Auto-sync if empty DB
+    const jobCount = await prisma.job.count({ where: { isActive: true } });
+    if (jobCount === 0 && req.query.nosync !== 'true') {
+      logger.info('No jobs found, auto-syncing...');
+      await syncJobs(100);
+    }
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const skip = (page - 1) * limit;
 
+    const tab = req.query.tab as string || 'all';
     const {
       search,
       location,
@@ -55,6 +84,21 @@ router.get(
 
     // Build where clause
     const where: any = { isActive: true };
+
+    // Tab filtering
+    if (tab === 'it') {
+      where.OR = [
+        { title: { contains: 'developer', mode: 'insensitive' } },
+        { title: { contains: 'engineer', mode: 'insensitive' } },
+        { title: { contains: 'software', mode: 'insensitive' } },
+        { title: { contains: 'frontend', mode: 'insensitive' } },
+        { title: { contains: 'backend', mode: 'insensitive' } },
+        { title: { contains: 'fullstack', mode: 'insensitive' } },
+        { title: { contains: 'devops', mode: 'insensitive' } },
+        { category: { contains: 'tech', mode: 'insensitive' } },
+        { source: { in: ['remotive', 'remoteok'] } },
+      ];
+    }
 
     if (search) {
       where.OR = [

@@ -226,14 +226,15 @@ router.post('/:portal/sync', authenticate, asyncHandler(async (req, res) => {
     data: { lastSyncAt: new Date() },
   });
 
-  // In a real app, this would fetch jobs from the portal API
-  // For MVP, we return success and note that jobs are synced
-  logger.info(`Portal sync triggered: ${portal} for user ${userId}`);
+  // Real sync + API fallback
+  logger.info(`Portal ${portal} sync for user ${userId} - using API fallback`);
+  const { syncJobs } = await import('../services/jobAggregator');
+  const result = await syncJobs(50);
 
   res.json({
     success: true,
-    message: `${portal} sync completed`,
-    data: { syncedAt: new Date() },
+    message: `${portal} sync completed (API fallback: ${result.synced} jobs)`,
+    data: { syncedAt: new Date(), fallbackJobs: result.synced },
   });
 }));
 
