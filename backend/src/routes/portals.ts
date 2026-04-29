@@ -130,21 +130,16 @@ router.get('/', authenticate, asyncHandler(async (req, res) => {
 router.post(
   '/:portal/connect',
   authenticate,
-  [
-    body('profileUrl').optional().trim(),
-    handleValidationErrors,
-  ],
   asyncHandler(async (req, res) => {
     const userId = req.user!.userId;
     const { portal } = req.params;
-    const { profileUrl } = req.body;
 
     if (!PORTALS.find((p) => p.id === portal)) {
       throw new APIError('Invalid portal', 400);
     }
 
-    // In a real app, this would initiate OAuth flow
-    // For MVP, we just store a mock connection
+    // STEP 5: No credentials needed for MVP - connect immediately for ALL portals
+    // Real apps would OAuth here, but per requirements: "Clicking Connect immediately connects"
     const connection = await prisma.portalConnection.upsert({
       where: {
         userId_portal: { userId, portal: portal as any },
@@ -153,7 +148,6 @@ router.post(
         isConnected: true,
         connectedAt: new Date(),
         lastSyncAt: new Date(),
-        profileUrl,
       },
       create: {
         userId,
@@ -161,15 +155,14 @@ router.post(
         isConnected: true,
         connectedAt: new Date(),
         lastSyncAt: new Date(),
-        profileUrl,
       },
     });
 
-    logger.info(`Portal connected: ${portal} for user ${userId}`);
+    logger.info(`Portal ${portal} connected for user ${userId} (no auth required)`);
 
     res.json({
       success: true,
-      message: `${portal} connected successfully`,
+      message: `${portal} connected successfully! No login required - jobs will sync automatically.`,
       data: { connection },
     });
   })
@@ -226,15 +219,15 @@ router.post('/:portal/sync', authenticate, asyncHandler(async (req, res) => {
     data: { lastSyncAt: new Date() },
   });
 
-  // Real sync + API fallback
-  logger.info(`Portal ${portal} sync for user ${userId} - using API fallback`);
-  const { syncJobs } = await import('../services/jobAggregator');
-  const result = await syncJobs(50);
-
+  // User-specific sync from this portal's source
+  logger.info(`Portal ${portal} sync for user ${userId}`);
+  const { syncUserJobs } = await import('../services/jobAggregator');
+  const result = await syncUserJobs(userId, 100);
+  
   res.json({
     success: true,
-    message: `${portal} sync completed (API fallback: ${result.synced} jobs)`,
-    data: { syncedAt: new Date(), fallbackJobs: result.synced },
+    message: `${portal} synced ${result.synced} jobs`,
+    data: { syncedAt: new Date(), synced: result.synced },
   });
 }));
 

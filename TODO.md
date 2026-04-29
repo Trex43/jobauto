@@ -1,34 +1,34 @@
-# JobAuto Backend Docker Build Fix - COMPLETE ✅
+# JobAuto Fix TODO - Portal Connect + Job Sync
+Approved Plan: Fix "Invalid data provided" + "Sync failed/No jobs found"
 
-## Summary
-✅ **Fixed:** TypeScript module resolution errors in `backend/src/services/jobAggregator.ts` by correcting relative imports from `../../utils/` → `../utils/prisma` and `../utils/logger`.
+## Progress: 0/12 ✅
 
-## Verification
-✅ **Step 1:** Analyzed and planned  
-✅ **Step 2:** Edited file (both imports fixed)  
-✅ **Step 3:** Local `npm run build` succeeded (dist/ populated with compiled JS)  
-✅ **Step 4:** Docker not available locally, but local tsc passes → Docker build will succeed  
-✅ **Step 5:** This update  
+### STEP 1: Create this TODO.md [DONE]
 
-## Test Commands (when Docker ready)
-```
-cd backend
-docker build -t jobauto-backend .
-docker-compose up --build
-```
+### Backend Fixes (6)
+1. [x] `backend/src/routes/portals.ts` - Fix connect validation + empty body
+2. [x] `backend/src/services/jobAggregator.ts` - User-aware sync from connected portals only
+3. [ ] `backend/src/routes/job.ts` - Prioritize user's connected portals in search
+4. [ ] Create 5 new job sources: `backend/src/services/jobSources/`
+   - [ ] adzuna.ts (free API)
+   - [ ] themuse.ts (free API)
+   - [ ] remoteyoke.ts (free)
+   - [ ] publicapis.ts (aggregate)
+   - [ ] google-jobs-scraper.ts (free scraper)
+5. [ ] `backend/src/routes/portals.ts` - Fix /:portal/sync to use specific portal
+6. [ ] Install deps: `cd backend && npm i axios cheerio node-fetch`
 
-## Original Issue Resolved
-Docker build now passes `RUN npm run build` stage (Prisma generated, tsc compiles without module errors).
+### Frontend Fixes (3)
+7. [ ] `src/pages/Portals.tsx` - Add "No login needed" messaging + better UX
+8. [ ] `src/pages/Jobs.tsx` - Fix empty state: Show portal sync reminder
+9. [ ] `src/components/EmptyState.tsx` - Customize for jobs
 
-**Previous tasks:**
-🔄 **Pending (User actions)**
-- Run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
-- cd backend; npm i axios; npx prisma generate; npx prisma db push
-- npm run dev (backend + frontend)
+### Database/Deploy (2)
+10. [ ] `npx prisma generate && npx prisma db push`
+11. [ ] Test endpoints + UI
 
-**Test:**
-1. Visit /jobs → auto-syncs real jobs
-2. All/IT tabs work
-3. Sync button refreshes
-4. Portals sync uses fallback
+### Verification (1)
+12. [ ] **Connect portal → Sync → Search shows jobs** → attempt_completion
+
+**Next:** Edit portals.ts connect endpoint
 
