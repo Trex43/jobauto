@@ -22,7 +22,8 @@ export interface RawJob {
 
 export interface NormalizedJob {
   externalId: string;
-  portal: string;
+  portal: 'OTHER';
+
   title: string;
   company: string;
   companyLogo: string | null;
@@ -60,7 +61,7 @@ async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
 }
 
 // Normalize raw job to Prisma format
-export function normalizeJob(raw: RawJob, source: string, portal: string): NormalizedJob {
+export function normalizeJob(raw: RawJob, source: string, portal: 'OTHER'): NormalizedJob {
   const extId = raw.id || `${source}-${Date.now()}`;
   
   return {
@@ -127,7 +128,7 @@ export async function syncJobs(limit: number = 200): Promise<{ synced: number; t
   }
 
   const normalized = allRawJobs
-    .map(raw => normalizeJob(raw, raw.source!, 'API' as any))
+    .map(raw => normalizeJob(raw, raw.source!, 'OTHER' as const))
     .slice(0, limit);
 
   const deduped = deduplicateJobs(normalized);
@@ -135,7 +136,7 @@ export async function syncJobs(limit: number = 200): Promise<{ synced: number; t
   // Upsert batch with transactions
   const createData = deduped.map(job => ({
     externalId: job.externalId,
-    portal: job.portal,
+  portal: 'OTHER' as const,
     title: job.title,
     company: job.company,
     companyLogo: job.companyLogo,
