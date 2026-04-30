@@ -34,11 +34,22 @@ enum ApplicationStatus {
   WITHDRAWN
 }
 
-// Job Portal Enum — 50+ platforms
+// Job Portal Enum — 60+ platforms (NEW API integrations added)
 enum JobPortal {
+  // NEW: Priority Free APIs (Phase 3 implemented)
+  REMOTIVE
+  REMOTEOK
+  ARBEITNOW
+  ADZUNA
+  USAJOBS
+  GREENHOUSE
+  LEVER
+  JOOBLE
+  THEMUSE
+  INDEED
+
   // General
   LINKEDIN
-  INDEED
   GLASSDOOR
   ZIPRECRUITER
   MONSTER
@@ -69,7 +80,6 @@ enum JobPortal {
   REMOTE_CO
   WEWORKREMOTELY
   FLEXJOBS
-  REMOTIVE
   WORKINGNOMADS
   SKIPTHEDRIVE
   VIRTUALVOCATIONS
