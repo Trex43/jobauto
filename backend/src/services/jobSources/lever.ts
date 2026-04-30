@@ -65,8 +65,12 @@ export async function fetchLeverJobs(companyBoardUrl: string): Promise<RawJob[]>
         published_at: new Date(job.createdAt).toISOString(),
       };
     });
-  } catch (error) {
-    console.error(`Lever fetch error for ${companyBoardUrl}:`, error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error(`Lever fetch error for ${companyBoardUrl}:`, error.message);
+    } else {
+      console.error(`Lever fetch error for ${companyBoardUrl}:`, error);
+    }
     return [];
   }
 }

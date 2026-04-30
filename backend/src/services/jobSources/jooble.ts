@@ -99,8 +99,12 @@ export async function fetchJoobleJobs(options?: {
         published_at: job.posted,
       };
     });
-  } catch (error) {
-    console.error('Jooble API error:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Jooble API error:', error.response?.data || error.message);
+    } else {
+      console.error('Jooble API error:', error);
+    }
     return [];
   }
 }

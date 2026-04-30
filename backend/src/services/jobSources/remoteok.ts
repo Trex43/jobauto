@@ -20,8 +20,12 @@ export async function fetchRemoteOKJobs(): Promise<RawJob[]> {
       tags: [],
       source: 'remoteok',
     }));
-  } catch (error) {
-    console.error('RemoteOK fetch failed:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('RemoteOK fetch failed:', error.message);
+    } else {
+      console.error('RemoteOK fetch failed:', error);
+    }
     return [];
   }
 }

@@ -31,8 +31,12 @@ export async function fetchIndeedJobs(): Promise<RawJob[]> {
       }
     });
     return jobs;
-  } catch (error) {
-    console.error('Indeed scraper failed:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Indeed scraper failed:', error.message);
+    } else {
+      console.error('Indeed scraper failed:', error);
+    }
     return [];
   }
 }

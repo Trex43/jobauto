@@ -19,8 +19,12 @@ export async function fetchTheMuseJobs(): Promise<RawJob[]> {
       tags: job.categories.map((c: any) => c.name),
       source: 'themuse',
     }));
-  } catch (error) {
-    console.error('TheMuse fetch failed:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('TheMuse fetch failed:', error.message);
+    } else {
+      console.error('TheMuse fetch failed:', error);
+    }
     return [];
   }
 }

@@ -21,8 +21,12 @@ export async function fetchRemotiveJobs(): Promise<RawJob[]> {
       source: 'remotive',
       published_at: job.publication_date,
     }));
-  } catch (error) {
-    console.error('Remotive fetch failed:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Remotive fetch failed:', error.message);
+    } else {
+      console.error('Remotive fetch failed:', error);
+    }
     return [];
   }
 }

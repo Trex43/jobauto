@@ -1,34 +1,50 @@
-# JobAuto Fix TODO - Portal Connect + Job Sync
-Approved Plan: Fix "Invalid data provided" + "Sync failed/No jobs found"
+# AutoJob Platform - Implementation TODO
 
-## Progress: 0/12 ✅
+## STATUS: IN PROGRESS
 
-### STEP 1: Create this TODO.md [DONE]
+### ✅ COMPLETED
+- [x] Phase 1: Audit Complete
 
-### Backend Fixes (6)
-1. [x] `backend/src/routes/portals.ts` - Fix connect validation + empty body
-2. [x] `backend/src/services/jobAggregator.ts` - User-aware sync from connected portals only
-3. [ ] `backend/src/routes/job.ts` - Prioritize user's connected portals in search
-4. [ ] Create 5 new job sources: `backend/src/services/jobSources/`
-   - [ ] adzuna.ts (free API)
-   - [ ] themuse.ts (free API)
-   - [ ] remoteyoke.ts (free)
-   - [ ] publicapis.ts (aggregate)
-   - [ ] google-jobs-scraper.ts (free scraper)
-5. [ ] `backend/src/routes/portals.ts` - Fix /:portal/sync to use specific portal
-6. [ ] Install deps: `cd backend && npm i axios cheerio node-fetch`
+### 📋 PHASE 3: REAL JOB SOURCE INTEGRATIONS
 
-### Frontend Fixes (3)
-7. [ ] `src/pages/Portals.tsx` - Add "No login needed" messaging + better UX
-8. [ ] `src/pages/Jobs.tsx` - Fix empty state: Show portal sync reminder
-9. [ ] `src/components/EmptyState.tsx` - Customize for jobs
+#### Job Sources (8)
+- [x] remotive.ts - Already working
+- [x] remoteok.ts - Already working  
+- [x] arbeitnow.ts - Already working
+- [ ] adzuna.ts - FREE API (CREATE)
+- [ ] usajobs.ts - FREE API (CREATE)
+- [ ] greenhouse.ts - PUBLIC BOARDS (CREATE)
+- [ ] lever.ts - PUBLIC BOARDS (CREATE)
+- [ ] jooble.ts - FREE API (CREATE)
 
-### Database/Deploy (2)
-10. [ ] `npx prisma generate && npx prisma db push`
-11. [ ] Test endpoints + UI
+### 📋 PHASE 4: PORTAL CONNECT UX
+- [ ] Portals.tsx - Add one-click connect UI better messaging
+- [ ] Jobs.tsx - Show connected portals status
+- [ ] Job Feed enhancements
 
-### Verification (1)
-12. [ ] **Connect portal → Sync → Search shows jobs** → attempt_completion
+### 📋 PHASE 5: AUTO-APPLY ENGINE
+- [ ] Queue system with BullMQ
+- [ ] Job fetcher worker
+- [ ] Auto-applier worker
+- [ ] Scheduled cron jobs
+- [ ] Resume upload handling
 
-**Next:** Edit portals.ts connect endpoint
+### 📋 PHASE 6: DATABASE
+- [ ] PortalHealth model
+- [ ] AutoApplyLog model
 
+### 📋 PHASE 8: DEPLOYMENT
+- [ ] Docker build verification
+- [ ] Prisma migrations
+
+---
+
+## IMPLEMENTATION ORDER:
+1. Create Adzuna integration ✅
+2. Create USAJobs integration ✅
+3. Create Greenhouse integration ✅
+4. Create Lever integration ✅
+5. Create Jooble integration ✅
+6. Update jobAggregator with new sources
+7. Build queue system
+8. Frontend enhancements
