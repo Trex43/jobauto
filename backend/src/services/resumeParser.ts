@@ -259,25 +259,108 @@ export function parseResume(text: string): ParsedResume {
     }
   }
   
-  // Extract experiences (looking for company patterns)
+// Extract experiences (improved pattern matching)
   const experiences: ParsedResume['experiences'] = [];
-  const expPatterns = [
-    /(?:experience|work history|employment)[:\s]*/i,
-    /^(?:company|employer)[:\s]*/i,
-  ];
   
-  // Try to find job entries (title at company from - to)
-  const jobEntryRegex = /(.+?)\s+(?:at|from)\s+(.+?)\s+(\w+\s+\d{4}|(?:\d{4}))\s*[-–]\s*(?:present|current|(\w+\s+\d{4})|(\d{4}))?/gi;
+  // Pattern 1: "Title at Company Year - Year" or "Title at Company Year - Present"
+  const jobEntryRegex1 = /(.+?)\s+(?:at|from)\s+(.+?)\s+(\d{4})\s*[-–]\s*(?:present|current|(\d{4}))?/gi;
   let match;
-  while ((match = jobEntryRegex.exec(text)) !== null) {
-    if (match[1] && match[2] && match[1].length < 100) {
+  while ((match = jobEntryRegex1.exec(text)) !== null) {
+    if (match[1] && match[2] && match[1].length < 100 && match[2].length < 80) {
       experiences.push({
         title: match[1].trim(),
         company: match[2].trim(),
-        startDate: match[3] || '',
-        endDate: match[4] || match[5] || undefined,
-        isCurrent: !match[4] && !match[5] && (match[0].toLowerCase().includes('present') || match[0].toLowerCase().includes('current')),
+        startDate: match[3],
+        endDate: match[4] || undefined,
+        isCurrent: !match[4] && (match[0].toLowerCase().includes('present') || match[0].toLowerCase().includes('current')),
       });
+    }
+  }
+  
+  // Pattern 2: Look for common job titles in context with dates
+  // e.g., "Software Engineer 2020 - 2022" or "Manager 2019-Present"
+  if (experiences.length === 0) {
+    const titlePatterns = [
+      /((?:senior\s+)?(?:software|frontend|backend|full[\s-]?stack|web|mobile|full[\s-]?stack)\s*engineer)/gi,
+      /((?:senior\s+)?developer)/gi,
+      /((?:senior\s+)?software\s*developer)/gi,
+      /(product\s*manager)/gi,
+      /(project\s*manager)/gi,
+      /(data\s*scientist)/gi,
+      /(data\s*analyst)/gi,
+      /(devops\s*engineer)/gi,
+      /(cloud\s*engineer)/gi,
+      /(solution\s*architect)/gi,
+      /(technical\s*lead)/gi,
+      /(team\s*lead)/gi,
+      /(software\s*architect)/gi,
+    ];
+    
+    for (const pattern of titlePatterns) {
+      while ((match = pattern.exec(text)) !== null) {
+        const title = match[1];
+        // Look for date range near this title (within 50 chars before or after)
+        const searchStart = Math.max(0, match.index - 50);
+        const searchEnd = Math.min(text.length, match.index + title.length + 50);
+        const searchArea = text.substring(searchStart, searchEnd);
+        
+        const dateMatch = searchArea.match(/(\d{4})\s*[-–]\s*(?:present|current|(\d{4}))?/);
+        if (dateMatch && title.length > 3) {
+          experiences.push({
+            title: title.charAt(0).toUpperCase() + title.slice(1),
+            company: 'Company',
+            startDate: dateMatch[1],
+            endDate: dateMatch[2] || undefined,
+            isCurrent: !dateMatch[2] && searchArea.toLowerCase().includes('present'),
+          });
+          break;
+        }
+      }
+      if (experiences.length > 0) break;
+    }
+  }
+  
+  // Pattern 3: Look for employment/work experience section headers and extract bullets
+  if (experiences.length === 0) {
+    const lines = text.split('\n');
+    let inWorkSection = false;
+    let currentCompany = '';
+    let currentTitle = '';
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim().toLowerCase();
+      
+      // Check if we're entering work experience section
+      if (line.includes('experience') || line.includes('employment') || line.includes('work history')) {
+        if (line.length < 30 || line.includes('section')) {
+          inWorkSection = true;
+          continue;
+        }
+      }
+      
+      if (inWorkSection) {
+        // Look for company names (usually followed by dates)
+        const companyLineMatch = lines[i].match(/^([^•\-*]+)$/);
+        if (companyLineMatch && companyLineMatch[1].length > 2 && companyLineMatch[1].length < 60) {
+          const dateLine = lines[i + 1]?.match(/(\d{4})\s*[-–]\s*(?:present|current|(\d{4}))?/);
+          if (dateLine) {
+            currentCompany = companyLineMatch[1].trim();
+            currentTitle = lines[i - 1]?.trim() || 'Professional';
+            experiences.push({
+              title: currentTitle,
+              company: currentCompany,
+              startDate: dateLine[1],
+              endDate: dateLine[2] || undefined,
+              isCurrent: !dateLine[2],
+            });
+          }
+        }
+        
+        // Stop if we hit education or skills section
+        if (line.includes('education') || line.includes('skills')) {
+          break;
+        }
+      }
     }
   }
   
