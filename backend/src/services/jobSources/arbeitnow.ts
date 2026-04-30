@@ -24,8 +24,12 @@ export async function fetchArbeitnowJobs(): Promise<RawJob[]> {
       source: 'arbeitnow',
       category: job.category,
     }));
-  } catch (error) {
-    console.error('Arbeitnow fetch failed:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Arbeitnow fetch failed:', error.message);
+    } else {
+      console.error('Arbeitnow fetch failed:', error);
+    }
     return [];
   }
 }

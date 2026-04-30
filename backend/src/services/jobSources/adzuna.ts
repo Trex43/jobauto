@@ -58,10 +58,10 @@ function mapRemoteType(description: string, title: string): boolean | null {
   return null;
 }
 
-function extractSkills(tags: any[]): string[] {
+function extractSkills(tags: any[] | undefined): string[] {
   if (!tags || !Array.isArray(tags)) return [];
   return tags
-    .filter((tag: any) => tag && typeof tag === 'string')
+    .filter((tag: unknown): tag is string => typeof tag === 'string')
     .slice(0, 10);
 }
 
@@ -105,7 +105,7 @@ async function searchJobs(params: {
       return [];
     }
 
-    return data.results.map((job: AdzunaJob) => ({
+return data.results.map((job: AdzunaJob) => ({
       id: `adzuna-${job.id}`,
       title: job.title,
       company: job.company?.display_name || 'Unknown',
@@ -115,13 +115,17 @@ async function searchJobs(params: {
       url: job.redirect_url,
       salary_min: job.salary_min,
       salary_max: job.salary_max,
-      tags: extractSkills(job.data),
+      tags: extractSkills(job.data || []),
       source: 'adzuna',
-      category: job.category?.label || CATEGORY_MAP[job.category?.tag] || null,
+      category: job.category?.label || (job.category?.tag ? CATEGORY_MAP[job.category.tag] : null) || null,
       published_at: job.date_posted,
     }));
-  } catch (error) {
-    console.error('Adzuna API error:', error?.response?.data || error);
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Adzuna API error:', error.response?.data || error.message);
+    } else {
+      console.error('Adzuna API error:', error);
+    }
     return [];
   }
 }
@@ -157,8 +161,12 @@ async function searchRemoteJobs(keyword: string = 'developer'): Promise<RawJob[]
       seen.add(job.id);
       return true;
     });
-  } catch (error) {
-    console.error('Adzuna remote search error:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('Adzuna remote search error:', error.message);
+    } else {
+      console.error('Adzuna remote search error:', error);
+    }
     return [];
   }
 }

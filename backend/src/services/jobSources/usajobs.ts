@@ -110,8 +110,12 @@ export async function fetchUSAJobsJobs(options?: {
           published_at: desc.PublicationStartDate,
         };
       });
-  } catch (error) {
-    console.error('USAJobs API error:', error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error('USAJobs API error:', error.response?.data || error.message);
+    } else {
+      console.error('USAJobs API error:', error);
+    }
     return [];
   }
 }

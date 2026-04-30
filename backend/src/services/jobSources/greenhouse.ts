@@ -50,8 +50,12 @@ export async function fetchGreenhouseJobs(companyBoardUrl: string): Promise<RawJ
       source: 'greenhouse',
       published_at: job.updated_at,
     }));
-  } catch (error) {
-    console.error(`Greenhouse fetch error for ${companyBoardUrl}:`, error);
+} catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      console.error(`Greenhouse fetch error for ${companyBoardUrl}:`, error.message);
+    } else {
+      console.error(`Greenhouse fetch error for ${companyBoardUrl}:`, error);
+    }
     return [];
   }
 }
