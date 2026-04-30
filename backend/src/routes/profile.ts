@@ -4,6 +4,7 @@ import { prisma } from '../utils/prisma';
 import { authenticate } from '../middleware/auth';
 import { APIError, asyncHandler } from '../middleware/error';
 import { logger } from '../utils/logger';
+import { parseResume, cleanResumeText } from '../services/resumeParser';
 
 const router = Router();
 
@@ -363,6 +364,154 @@ router.post('/resume', authenticate, asyncHandler(async (req, res) => {
     success: true,
     message: 'Resume updated successfully',
     data: { profile },
+  });
+}));
+
+/**
+ * @route   POST /api/profile/resume/parse
+ * @desc    Parse resume and auto-fill profile
+ * @access  Private
+ */
+router.post('/resume/parse', authenticate, asyncHandler(async (req, res) => {
+  const userId = req.user!.userId;
+  const { resumeText } = req.body;
+
+  if (!resumeText) {
+    throw new APIError('Resume text is required', 400);
+  }
+
+  // Parse the resume
+  const cleanedText = cleanResumeText(resumeText);
+  const parsed = parseResume(cleanedText);
+
+  // Get or create profile
+  let profile = await prisma.profile.findUnique({
+    where: { userId },
+    include: {
+      skills: true,
+      experiences: true,
+      educations: true,
+    },
+  });
+
+  if (!profile) {
+    profile = await prisma.profile.create({
+      data: { userId },
+      include: {
+        skills: true,
+        experiences: true,
+        educations: true,
+      },
+    });
+  }
+
+  // Update profile with parsed data
+  const updateData: any = {};
+  if (parsed.headline) updateData.headline = parsed.headline;
+  if (parsed.summary) updateData.summary = parsed.summary;
+  if (parsed.phone) updateData.phone = parsed.phone;
+  if (parsed.location) updateData.location = parsed.location;
+  if (parsed.yearsOfExperience) updateData.yearsOfExperience = parsed.yearsOfExperience;
+  if (parsed.linkedInUrl) updateData.linkedInUrl = parsed.linkedInUrl;
+  if (parsed.githubUrl) updateData.githubUrl = parsed.githubUrl;
+  if (parsed.email) updateData.phone = parsed.phone; // Using phone field for contact
+
+  const updatedProfile = await prisma.profile.update({
+    where: { userId },
+    data: updateData,
+  });
+
+  // Add parsed skills (mark as AI extracted)
+  const skillPromises = parsed.skills.map(async (skillName) => {
+    try {
+      await prisma.skill.upsert({
+        where: {
+          profileId_name: {
+            profileId: profile!.id,
+            name: skillName,
+          },
+        },
+        update: { isAiExtracted: true },
+        create: {
+          profileId: profile!.id,
+          name: skillName,
+          isAiExtracted: true,
+        },
+      });
+    } catch (err) {
+      logger.warn(`Failed to add skill: ${skillName}`, err);
+    }
+  });
+
+  // Add parsed experiences
+  for (const exp of parsed.experiences) {
+    try {
+      if (exp.title && exp.company && exp.startDate) {
+        await prisma.experience.create({
+          data: {
+            profileId: profile.id,
+            title: exp.title,
+            company: exp.company,
+            location: exp.location || null,
+            startDate: new Date(exp.startDate),
+            endDate: exp.endDate ? new Date(exp.endDate) : null,
+            isCurrent: exp.isCurrent,
+            description: exp.description || null,
+          },
+        });
+      }
+    } catch (err) {
+      logger.warn(`Failed to add experience: ${exp.title}`, err);
+    }
+  }
+
+  // Add parsed educations
+  for (const edu of parsed.educations) {
+    try {
+      if (edu.institution && edu.degree) {
+        await prisma.education.create({
+          data: {
+            profileId: profile.id,
+            institution: edu.institution,
+            degree: edu.degree,
+            fieldOfStudy: edu.fieldOfStudy || null,
+            startDate: new Date(edu.startDate || new Date().toISOString()),
+            endDate: edu.endDate ? new Date(edu.endDate) : null,
+            isCurrent: edu.isCurrent,
+            gpa: edu.gpa || null,
+          },
+        });
+      }
+    } catch (err) {
+      logger.warn(`Failed to add education: ${edu.institution}`, err);
+    }
+  }
+
+  await Promise.all(skillPromises);
+
+  logger.info(`Resume parsed for user: ${userId}, found ${parsed.skills.length} skills`);
+
+  // Return the full updated profile
+  const fullProfile = await prisma.profile.findUnique({
+    where: { userId },
+    include: {
+      skills: true,
+      experiences: true,
+      educations: true,
+    },
+  });
+
+  res.json({
+    success: true,
+    message: 'Resume parsed and profile updated',
+    data: {
+      profile: fullProfile,
+      parsed: {
+        skillCount: parsed.skills.length,
+        experienceCount: parsed.experiences.length,
+        educationCount: parsed.educations.length,
+      },
+    },
   });
 }));
 
