@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode, type ChangeEvent } from 'react';
+import { useEffect, useState, useRef, type ReactNode, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Zap, LogOut, Briefcase, Send, TrendingUp, User,
-  Plus, X, Save, Loader2
+  Plus, X, Save, Loader2, Upload, FileText
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
@@ -29,6 +29,11 @@ export default function ProfilePage() {
   const [newSkill, setNewSkill] = useState({ name: '', category: '', proficiency: 5 });
   const [newExp, setNewExp] = useState({ title: '', company: '', location: '', startDate: '', endDate: '', isCurrent: false, description: '' });
   const [newEdu, setNewEdu] = useState({ institution: '', degree: '', fieldOfStudy: '', startDate: '', endDate: '', isCurrent: false, gpa: '' });
+
+  // Resume upload state
+  const [resumeText, setResumeText] = useState('');
+  const [parsingResume, setParsingResume] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.get<ProfileData>('/profile')
@@ -104,11 +109,45 @@ export default function ProfilePage() {
     } catch (err: any) { alert(err.message); }
   };
 
-  const removeEducation = async (id: string) => {
+const removeEducation = async (id: string) => {
     try {
       await api.delete(`/profile/educations/${id}`);
       setProfile((p: ProfileData | null) => p ? { ...p, educations: p.educations.filter((e: Education) => e.id !== id) } : p);
     } catch (err: any) { alert(err.message); }
+  };
+
+  // Handle file upload for resume parsing
+  const handleResumeUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      setResumeText(text);
+      await parseResume(text);
+    };
+    reader.readAsText(file);
+  };
+
+  const parseResume = async (text: string) => {
+    setParsingResume(true);
+    try {
+      const res = await api.post<{ profile: ProfileData; parsed: any }>('/profile/resume/parse', { resumeText: text });
+      if (res.success && res.data) {
+        setProfile(res.data.profile);
+        setForm(res.data.profile);
+        alert(`Resume parsed! Found ${res.data.parsed.skillCount} skills, ${res.data.parsed.experienceCount} experiences.`);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Failed to parse resume');
+    } finally {
+      setParsingResume(false);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
   };
 
   const sidebarLink = (to: string, icon: ReactNode, label: string) => (
@@ -165,9 +204,56 @@ export default function ProfilePage() {
                 ))}
               </div>
 
-              {/* Personal Tab */}
+{/* Personal Tab */}
               {activeTab === 'personal' && (
                 <div className="bg-[#13131f] border border-[#7c39f6]/20 rounded-2xl p-6 space-y-4">
+                  {/* Resume Upload Section */}
+                  <div className="border-2 border-dashed border-[#7c39f6]/30 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-8 h-8 text-[#7c39f6]" />
+                        <div>
+                          <p className="font-medium">Upload Resume</p>
+                          <p className="text-sm text-gray-400">Paste your resume text or upload a .txt file</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          accept=".txt,.md,.text"
+                          onChange={handleResumeUpload}
+                          className="hidden"
+                        />
+                        <button
+                          onClick={triggerFileInput}
+                          disabled={parsingResume}
+                          className="flex items-center gap-2 px-4 py-2 bg-[#13131f] text-white rounded-lg hover:bg-[#1a1a2a] transition-colors disabled:opacity-50"
+                        >
+                          {parsingResume ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                          {parsingResume ? 'Parsing...' : 'Choose File'}
+                        </button>
+                      </div>
+                    </div>
+{resumeText && (
+                      <div className="flex gap-2 mt-3">
+                        <textarea
+                          value={resumeText}
+                          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setResumeText(e.target.value)}
+                          className="flex-1 px-4 py-2 bg-[#0a0a0f] border border-gray-700 rounded-lg text-white focus:border-[#7c39f6] outline-none h-32 resize-none"
+                          placeholder="Or paste your resume text here..."
+                        />
+                        <button
+                          onClick={() => parseResume(resumeText)}
+                          disabled={parsingResume}
+                          className="px-4 py-2 bg-[#7c39f6] text-white rounded-lg hover:bg-[#6d28d9] transition-colors disabled:opacity-50"
+                        >
+                          {parsingResume ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Parse'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-gray-400 mb-1">Headline</label>
