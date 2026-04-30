@@ -19,8 +19,21 @@ const handleValidationErrors = (req: any, res: any, next: any) => {
   next();
 };
 
-// 50+ Job Portals with categories
+// 55+ Job Portals with categories
+// New REAL API integrations: ADZUNA, USAJOBS, GREENHOUSE, LEVER, JOOBLE
 const PORTALS = [
+  // NEW: Priority Free APIs
+  { id: 'REMOTIVE', name: 'Remotive', icon: 'remotive', color: '#FF6B35', category: 'API', description: 'Remote jobs API - No key needed' },
+  { id: 'ADZUNA', name: 'Adzuna', icon: 'adzuna', color: '#00A6A6', category: 'API', description: '1000 free requests/month - Set ADZUNA_APP_ID' },
+  { id: 'USAJOBS', name: 'USAJobs', icon: 'usajobs', color: '#003366', category: 'API', description: 'Federal jobs - Requires API key' },
+  { id: 'GREENHOUSE', name: 'Greenhouse', icon: 'greenhouse', color: '#3B8C48', category: 'API', description: 'Public boards (Airbnb, Stripe, etc.)' },
+  { id: 'LEVER', name: 'Lever', icon: 'lever', color: '#4285F4', category: 'API', description: 'Public boards (Coinbase, Figma, etc.)' },
+  { id: 'JOOBLE', name: 'Jooble', icon: 'jooble', color: '#FF6600', category: 'API', description: '100 free requests/month - Set API key' },
+
+  // Remote (existing working)
+  { id: 'REMOTEOK', name: 'Remote OK', icon: 'remoteok', color: '#1DA1F2', category: 'REMOTE' },
+  { id: 'ARBEITNOW', name: 'Arbeitnow', icon: 'arbeitnow', color: '#00A98F', category: 'REMOTE' },
+
   // General
   { id: 'LINKEDIN', name: 'LinkedIn', icon: 'linkedin', color: '#0A66C2', category: 'GENERAL' },
   { id: 'INDEED', name: 'Indeed', icon: 'indeed', color: '#003A9B', category: 'GENERAL' },

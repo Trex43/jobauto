@@ -42,10 +42,15 @@ export interface NormalizedJob {
   category: string | null;
 }
 
-// Fetch single source
+// Job source integrations
 import { fetchRemotiveJobs } from './jobSources/remotive';
 import { fetchRemoteOKJobs } from './jobSources/remoteok';
 import { fetchArbeitnowJobs } from './jobSources/arbeitnow';
+import { fetchAdzunaJobs } from './jobSources/adzuna';
+import { fetchUSAJobsJobs } from './jobSources/usajobs';
+import { fetchKnownGreenhouseBoards } from './jobSources/greenhouse';
+import { fetchKnownLeverBoards } from './jobSources/lever';
+import { fetchJoobleJobs } from './jobSources/jooble';
 
 async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
   switch (source) {
@@ -55,6 +60,16 @@ async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
       return await fetchRemoteOKJobs();
     case 'arbeitnow':
       return await fetchArbeitnowJobs();
+    case 'adzuna':
+      return await fetchAdzunaJobs({ limit: 100 });
+    case 'usajobs':
+      return await fetchUSAJobsJobs({ limit: 50 });
+    case 'greenhouse':
+      return await fetchKnownGreenhouseBoards();
+    case 'lever':
+      return await fetchKnownLeverBoards();
+    case 'jooble':
+      return await fetchJoobleJobs({ limit: 50 });
     case 'themuse':
       const { fetchTheMuseJobs } = await import('./jobSources/themuse');
       return await fetchTheMuseJobs();
@@ -104,22 +119,25 @@ export function deduplicateJobs(jobs: NormalizedJob[]): NormalizedJob[] {
   });
 }
 
-// Portal to source mapping (add more as we implement sources)
+// Portal to source mapping
 const PORTAL_SOURCE_MAP: Record<string, string> = {
   'REMOTIVE': 'remotive',
   'REMOTEOK': 'remoteok',
   'ARBEITNOW': 'arbeitnow',
+  'ADZUNA': 'adzuna',
+  'USAJOBS': 'usajobs',
+  'GREENHOUSE': 'greenhouse',
+  'LEVER': 'lever',
+  'JOOBLE': 'jooble',
   'THEMUSE': 'themuse',
   'INDEED': 'indeed',
-  'LINKEDIN': 'linkedin', // Stub for future
-  // Add more later
+  'LINKEDIN': 'linkedin',
 };
 
 // User-aware sync - only from connected portals
 export async function syncUserJobs(userId: string, limit: number = 200): Promise<{ synced: number; total: number }> {
   logger.info(`Starting user-specific job sync for user ${userId}...`);
 
-  // Get user's connected portals
   const connections = await prisma.portalConnection.findMany({
     where: { 
       userId,
@@ -132,7 +150,6 @@ export async function syncUserJobs(userId: string, limit: number = 200): Promise
     return { synced: 0, total: await prisma.job.count({ where: { isActive: true } }) };
   }
 
-  // Map portals to available sources
   const availableSources = connections
     .map(c => PORTAL_SOURCE_MAP[c.portal])
     .filter(Boolean) as string[];
@@ -146,7 +163,6 @@ export async function syncUserJobs(userId: string, limit: number = 200): Promise
 
   const allRawJobs: RawJob[] = [];
 
-  // Fetch parallel from user's sources
   await Promise.all(
     availableSources.map(async (source) => {
       const jobs = await fetchJobsFromSource(source);
@@ -165,7 +181,6 @@ export async function syncUserJobs(userId: string, limit: number = 200): Promise
 
   const deduped = deduplicateJobs(normalized);
   
-  // Upsert to DB (user jobs mixed, but tagged by source)
   const createData = deduped.map(job => ({
     externalId: job.externalId,
     portal: 'OTHER' as const,
@@ -205,9 +220,7 @@ export async function syncUserJobs(userId: string, limit: number = 200): Promise
   return { synced: deduped.length, total };
 }
 
-// Legacy global sync (deprecated, kept for fallback)
 export async function syncJobs(limit: number = 200): Promise<{ synced: number; total: number }> {
   logger.warn('Global syncJobs called - use syncUserJobs instead');
   return await syncUserJobs('GLOBAL_FALLBACK', limit);
 }
-
