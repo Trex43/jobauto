@@ -36,6 +36,9 @@ import aiRoutes from './routes/ai';
 import autoApplyRoutes from './routes/autoApply';
 import portalRoutes from './routes/portals';
 
+// Import workers
+import { startWorkers } from './workers/index';
+
 // Import middleware
 import { errorHandler } from './middleware/error';
 import { requestLogger } from './middleware/logger';
@@ -68,15 +71,12 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    // In production, reject unknown origins
     if (process.env.NODE_ENV === 'production') {
       console.warn(`CORS blocked origin: ${origin}`);
       return callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
-    // In development, allow all origins
     callback(null, true);
   },
   credentials: true,
@@ -86,8 +86,8 @@ app.use(cors({
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -119,7 +119,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Root endpoint for load balancer / uptime checks
+// Root endpoint
 app.get('/', (req, res) => {
   res.json({
     status: 'ok',
@@ -130,7 +130,7 @@ app.get('/', (req, res) => {
 });
 
 // API routes
-app.use('/api/webhooks', webhookRoutes); // Webhooks don't need auth
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/profile', profileRoutes);
@@ -160,6 +160,9 @@ const startServer = async () => {
     // Test database connection
     await prisma.$connect();
     console.log('✅ Database connected successfully');
+
+    // Start background workers (job fetcher, auto-applier, cover letter, notifications)
+    await startWorkers();
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
