@@ -37,26 +37,48 @@ const worker = new Worker<AutoApplyData>(
       }
 
       // Blacklist check
-      if (settings.blacklistedCompanies.some((c: string) => jobRecord.company.toLowerCase().includes(c.toLowerCase()))) {
-        await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: AutoApplyStatus.FAILED, errorMessage: `Blacklisted: ${jobRecord.company}` } });
-        return { skipped: true, reason: 'blacklisted' };
+      if (settings.excludeCompanies.some((c: string) => jobRecord.company.toLowerCase().includes(c.toLowerCase()))) {
+        await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: AutoApplyStatus.FAILED, errorMessage: `Excluded company: ${jobRecord.company}` } });
+        return { skipped: true, reason: 'excluded_company' };
       }
     }
 
-    // Mark in progress
+    // Mark in progress - use valid AutoApplyStatus enum
     await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: AutoApplyStatus.PROCESSING, startedAt: new Date() } });
-    await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: AutoApplyStatus.PROCESSING, message: 'Starting application' } });
+    
+    // Create log with proper action field
+    await prisma.autoApplyLog.create({ 
+      data: { 
+        autoApplyJobId, 
+        action: 'AUTO_APPLY_START', 
+        attempt: autoApplyJob.attemptCount + 1, 
+        status: 'PROCESSING', 
+        message: 'Starting application' 
+      } 
+    });
 
     let externalAppId: string | undefined;
     try {
       externalAppId = await applyToJob({ method: autoApplyJob.applyMethod, jobRecord, userId, coverLetter: autoApplyJob.coverLetter ?? undefined });
     } catch (err: any) {
       const isRetryable = autoApplyJob.attemptCount + 1 < autoApplyJob.maxAttempts;
+      const newStatus = isRetryable ? AutoApplyStatus.PROCESSING : AutoApplyStatus.FAILED;
       await prisma.autoApplyJob.update({
         where: { id: autoApplyJobId },
-        data: { status: isRetryable ? AutoApplyStatus.PROCESSING : AutoApplyStatus.FAILED, attemptCount: { increment: 1 }, errorMessage: err.message },
+        data: { status: newStatus, attemptCount: { increment: 1 }, errorMessage: err.message },
       });
-      await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: isRetryable ? AutoApplyStatus.PROCESSING : AutoApplyStatus.FAILED, message: err.message } });
+      
+      // Create log with proper action field
+      await prisma.autoApplyLog.create({ 
+        data: { 
+          autoApplyJobId, 
+          action: isRetryable ? 'AUTO_APPLY_RETRY' : 'AUTO_APPLY_FAIL', 
+          attempt: autoApplyJob.attemptCount + 1, 
+          status: newStatus === AutoApplyStatus.PROCESSING ? 'PROCESSING' : 'FAILED', 
+          message: err.message 
+        } 
+      });
+      
       if (!isRetryable) {
         await notifyQueue.add('notify', { userId, type: 'apply_failed', payload: { jobTitle: jobRecord.title, company: jobRecord.company, errorMessage: err.message } });
       }
@@ -77,7 +99,18 @@ const worker = new Worker<AutoApplyData>(
       ...(settings ? [prisma.userAutoApplySettings.update({ where: { userId }, data: { appliedTodayCount: { increment: 1 } } })] : []),
     ]);
 
-    await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: AutoApplyStatus.COMPLETED, message: `Applied successfully`, details: { durationMs: Date.now() - startMs } } });
+    // Create log with proper action field
+    await prisma.autoApplyLog.create({ 
+      data: { 
+        autoApplyJobId, 
+        action: 'AUTO_APPLY_SUCCESS', 
+        attempt: autoApplyJob.attemptCount + 1, 
+        status: 'COMPLETED', 
+        message: `Applied successfully`, 
+        details: { durationMs: Date.now() - startMs } 
+      } 
+    });
+    
     await notifyQueue.add('notify', { userId, type: 'apply_success', payload: { jobTitle: jobRecord.title, company: jobRecord.company, applyUrl: jobRecord.applyUrl, externalAppId } });
 
     logger.info(`[AutoApply] SUCCESS: ${jobRecord.title} @ ${jobRecord.company}`);

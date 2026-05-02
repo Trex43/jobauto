@@ -28,6 +28,17 @@ export async function queueAutoApply(opts: { userId: string; jobId: string; prio
     data: { userId, jobId, status: 'PENDING', applyMethod },
   });
 
+  // Create initial log with action
+  await prisma.autoApplyLog.create({
+    data: { 
+      autoApplyJobId: autoApplyJob.id, 
+      action: 'AUTO_APPLY_QUEUED',
+      attempt: 0,
+      status: 'PENDING',
+      message: 'Auto-apply job queued'
+    }
+  });
+
   if (requireCoverLetter && process.env.OPENAI_API_KEY) {
     await coverLetterQueue.add(`cover-${autoApplyJob.id}`, { userId, jobId, autoApplyJobId: autoApplyJob.id } satisfies CoverLetterData, { priority });
   } else {
@@ -54,7 +65,8 @@ export async function bulkQueueAutoApply(userId: string) {
   const remaining = settings.dailyLimit - settings.appliedTodayCount;
   const toApply = candidateJobs.slice(0, remaining);
 
-  const queued: typeof toApply = [];
+  // Properly typed queued array
+  const queued: Awaited<ReturnType<typeof prisma.autoApplyJob.findFirst>>[] = [];
   for (const job of toApply) {
     const autoApplyJob = await queueAutoApply({ userId, jobId: job.id });
     if (autoApplyJob) queued.push(autoApplyJob);
@@ -71,12 +83,23 @@ export async function cancelAutoApply(autoApplyJobId: string, userId: string) {
 }
 
 export async function getAutoApplyStats(userId: string) {
-  const [total, byStatus, settings] = await Promise.all([
+  const [total, settings] = await Promise.all([
     prisma.autoApplyJob.count({ where: { userId } }),
-    prisma.autoApplyJob.groupBy({ by: ['status'], where: { userId }, _count: { id: true } }),
     prisma.userAutoApplySettings.findUnique({ where: { userId } }),
   ]);
-  const stats: Record<string, number> = {};
-  for (const row of byStatus) stats[row.status] = row._count.id;
+
+  // Use aggregate instead of groupBy with status since AutoApplyStatus enum values need proper handling
+  const pendingCount = await prisma.autoApplyJob.count({ where: { userId, status: 'PENDING' } });
+  const processingCount = await prisma.autoApplyJob.count({ where: { userId, status: 'PROCESSING' } });
+  const completedCount = await prisma.autoApplyJob.count({ where: { userId, status: 'COMPLETED' } });
+  const failedCount = await prisma.autoApplyJob.count({ where: { userId, status: 'FAILED' } });
+
+  const stats: Record<string, number> = {
+    PENDING: pendingCount,
+    PROCESSING: processingCount,
+    COMPLETED: completedCount,
+    FAILED: failedCount,
+  };
+
   return { total, byStatus: stats, todayCount: settings?.appliedTodayCount ?? 0, dailyLimit: settings?.dailyLimit ?? 20, isEnabled: settings?.isEnabled ?? false };
 }
