@@ -583,12 +583,15 @@ model AutoApplyJob {
   jobId         String?
   job           Job?            @relation(fields: [jobId], references: [id], onDelete: Cascade)
   status        AutoApplyStatus @default(PENDING)
+  priority      Int             @default(5)
   coverLetter   String?
   applyMethod   String          @default("web_form")
   externalAppId String?
   errorMessage  String?
   attemptCount  Int             @default(0)
   maxAttempts   Int             @default(3)
+  scheduledAt   DateTime?
+  scheduledFor DateTime?
   startedAt     DateTime?
   attemptedAt   DateTime?
   completedAt   DateTime?
@@ -636,12 +639,17 @@ model UserAutoApplySettings {
 
 // Portal Health Model
 model PortalHealth {
-  id          String    @id @default(uuid())
-  portal      JobPortal @unique
+  id           String    @id @default(uuid())
+  portal       JobPortal @unique
   isHealthy   Boolean   @default(true)
-  lastCheckAt DateTime  @default(now())
-  errorCount  Int       @default(0)
-  lastError   String?
+  lastCheckAt  DateTime  @default(now())
+  lastCheckedAt DateTime?
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  errorCount   Int       @default(0)
+  failureCount Int      @default(0)
+  errorMessage String?
+  avgResponseMs Int?
   updatedAt   DateTime  @updatedAt
 
   @@map("portal_health")
@@ -650,7 +658,10 @@ model PortalHealth {
 // Auto Apply Status Enum
 enum AutoApplyStatus {
   PENDING
+  QUEUED
   PROCESSING
+  IN_PROGRESS
   COMPLETED
   FAILED
+  SKIPPED
 }
