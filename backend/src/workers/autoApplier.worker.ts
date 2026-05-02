@@ -19,7 +19,7 @@ const worker = new Worker<AutoApplyData>(
 
     if (!autoApplyJob || !jobRecord) throw new Error(`Not found: ${autoApplyJobId}`);
 
-    if (['SUCCESS', 'SKIPPED'].includes(autoApplyJob.status)) {
+    if (autoApplyJob.status === AutoApplyStatus.COMPLETED) {
       return { skipped: true };
     }
 
@@ -32,20 +32,20 @@ const worker = new Worker<AutoApplyData>(
           data:  { appliedTodayCount: 0, lastResetAt: new Date() },
         });
       } else if (settings.appliedTodayCount >= settings.dailyLimit) {
-        await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: 'SKIPPED', errorMessage: 'Daily limit reached' } });
+        await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: AutoApplyStatus.FAILED, errorMessage: 'Daily limit reached' } });
         return { skipped: true, reason: 'daily_limit_reached' };
       }
 
       // Blacklist check
       if (settings.blacklistedCompanies.some((c: string) => jobRecord.company.toLowerCase().includes(c.toLowerCase()))) {
-        await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: 'SKIPPED', errorMessage: `Blacklisted: ${jobRecord.company}` } });
+        await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: AutoApplyStatus.FAILED, errorMessage: `Blacklisted: ${jobRecord.company}` } });
         return { skipped: true, reason: 'blacklisted' };
       }
     }
 
     // Mark in progress
-    await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: 'IN_PROGRESS', startedAt: new Date() } });
-    await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: 'IN_PROGRESS', message: 'Starting application' } });
+    await prisma.autoApplyJob.update({ where: { id: autoApplyJobId }, data: { status: AutoApplyStatus.PROCESSING, startedAt: new Date() } });
+    await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: AutoApplyStatus.PROCESSING, message: 'Starting application' } });
 
     let externalAppId: string | undefined;
     try {
@@ -54,9 +54,9 @@ const worker = new Worker<AutoApplyData>(
       const isRetryable = autoApplyJob.attemptCount + 1 < autoApplyJob.maxAttempts;
       await prisma.autoApplyJob.update({
         where: { id: autoApplyJobId },
-        data: { status: isRetryable ? 'QUEUED' : 'FAILED', attemptCount: { increment: 1 }, errorMessage: err.message },
+        data: { status: isRetryable ? AutoApplyStatus.PROCESSING : AutoApplyStatus.FAILED, attemptCount: { increment: 1 }, errorMessage: err.message },
       });
-      await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: isRetryable ? 'QUEUED' : 'FAILED', message: err.message } });
+      await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: isRetryable ? AutoApplyStatus.PROCESSING : AutoApplyStatus.FAILED, message: err.message } });
       if (!isRetryable) {
         await notifyQueue.add('notify', { userId, type: 'apply_failed', payload: { jobTitle: jobRecord.title, company: jobRecord.company, errorMessage: err.message } });
       }
@@ -67,17 +67,17 @@ const worker = new Worker<AutoApplyData>(
     await prisma.$transaction([
       prisma.autoApplyJob.update({
         where: { id: autoApplyJobId },
-        data: { status: 'SUCCESS', completedAt: new Date(), externalAppId, attemptCount: { increment: 1 } },
+        data: { status: AutoApplyStatus.COMPLETED, completedAt: new Date(), externalAppId, attemptCount: { increment: 1 } },
       }),
       prisma.application.upsert({
         where:  { userId_jobId: { userId, jobId } },
-        create: { userId, jobId, status: 'APPLIED', appliedAt: new Date(), coverLetter: autoApplyJob.coverLetter, source: 'AUTO' },
+        create: { userId, jobId, status: 'APPLIED', appliedAt: new Date(), coverLetter: autoApplyJob.coverLetter, isAutoApplied: true },
         update: { status: 'APPLIED', appliedAt: new Date() },
       }),
       ...(settings ? [prisma.userAutoApplySettings.update({ where: { userId }, data: { appliedTodayCount: { increment: 1 } } })] : []),
     ]);
 
-    await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: 'SUCCESS', message: `Applied successfully`, details: { durationMs: Date.now() - startMs } } });
+    await prisma.autoApplyLog.create({ data: { autoApplyJobId, attempt: autoApplyJob.attemptCount + 1, status: AutoApplyStatus.COMPLETED, message: `Applied successfully`, details: { durationMs: Date.now() - startMs } } });
     await notifyQueue.add('notify', { userId, type: 'apply_success', payload: { jobTitle: jobRecord.title, company: jobRecord.company, applyUrl: jobRecord.applyUrl, externalAppId } });
 
     logger.info(`[AutoApply] SUCCESS: ${jobRecord.title} @ ${jobRecord.company}`);
@@ -94,7 +94,8 @@ async function applyToJob(opts: { method: any; jobRecord: any; userId: string; c
   return `applied-${Date.now()}`;
 }
 
-function isNewDay(lastReset: Date): boolean {
+function isNewDay(lastReset: Date | null): boolean {
+  if (!lastReset) return true;
   const now = new Date(), reset = new Date(lastReset);
   return now.getDate() !== reset.getDate() || now.getMonth() !== reset.getMonth() || now.getFullYear() !== reset.getFullYear();
 }
