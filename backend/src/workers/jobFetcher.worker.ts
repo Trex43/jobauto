@@ -5,6 +5,16 @@ import { prisma } from '../utils/prisma';
 import { logger } from '../utils/logger';
 import { JobPortal } from '@prisma/client';
 
+// Import REAL job fetchers from jobSources
+import { fetchRemotiveJobs } from '../services/jobSources/remotive';
+import { fetchRemoteOKJobs } from '../services/jobSources/remoteok';
+import { fetchArbeitnowJobs } from '../services/jobSources/arbeitnow';
+import { fetchAdzunaJobs } from '../services/jobSources/adzuna';
+import { fetchUSAJobsJobs } from '../services/jobSources/usajobs';
+import { fetchKnownGreenhouseBoards } from '../services/jobSources/greenhouse';
+import { fetchKnownLeverBoards } from '../services/jobSources/lever';
+import { fetchJoobleJobs } from '../services/jobSources/jooble';
+
 export interface RawJob {
   externalId:   string;
   portal:       JobPortal;
@@ -20,24 +30,140 @@ export interface RawJob {
   postedAt?:    Date;
 }
 
-// ---------------------------------------------------------------------------
-// Stub fetchers — replace these imports with your real portal service files
-// ---------------------------------------------------------------------------
-async function stubFetcher(portal: string): Promise<RawJob[]> {
-  // Replace this with your real portal fetchers from backend/src/services/portals/
-  console.log(`[JobFetcher] Fetching from ${portal} (stub — wire up real fetcher)`);
-  return [];
-}
-
+// Map portal names to real fetcher functions
 const PORTAL_MAP: Record<string, () => Promise<RawJob[]>> = {
-  remotive:   () => stubFetcher('remotive'),
-  remoteok:   () => stubFetcher('remoteok'),
-  arbeitnow:  () => stubFetcher('arbeitnow'),
-  adzuna:     () => stubFetcher('adzuna'),
-  usajobs:    () => stubFetcher('usajobs'),
-  greenhouse: () => stubFetcher('greenhouse'),
-  lever:      () => stubFetcher('lever'),
-  jooble:     () => stubFetcher('jooble'),
+  remotive:   async () => {
+    const jobs = await fetchRemotiveJobs();
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.REMOTIVE,
+      title: j.title,
+      company: j.company,
+      location: j.location || 'Remote',
+      description: j.description,
+      applyUrl: j.url,
+      salaryMin: j.salary_min,
+      salaryMax: j.salary_max,
+      jobType: j.tags?.join(', '),
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
+  
+  remoteok:   async () => {
+    const jobs = await fetchRemoteOKJobs();
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.REMOTEOK,
+      title: j.title,
+      company: j.company,
+      location: j.location || 'Remote',
+      description: j.description,
+      applyUrl: j.url,
+      salaryMin: j.salary_min,
+      salaryMax: j.salary_max,
+      jobType: j.tags?.join(', '),
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
+  
+  arbeitnow:  async () => {
+    const jobs = await fetchArbeitnowJobs();
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.ARBEITNOW,
+      title: j.title,
+      company: j.company,
+      location: j.location || 'Remote',
+      description: j.description,
+      applyUrl: j.url,
+      jobType: j.tags?.join(', '),
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
+  
+  adzuna:     async () => {
+    const jobs = await fetchAdzunaJobs({ limit: 50 });
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.ADZUNA,
+      title: j.title,
+      company: j.company,
+      location: j.location || '',
+      description: j.description,
+      applyUrl: j.url,
+      salaryMin: j.salary_min,
+      salaryMax: j.salary_max,
+      jobType: j.tags?.join(', '),
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
+  
+  usajobs:    async () => {
+    const jobs = await fetchUSAJobsJobs({ limit: 50 });
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.USAJOBS,
+      title: j.title,
+      company: j.company,
+      location: j.location || '',
+      description: j.description,
+      applyUrl: j.url,
+      jobType: j.category,
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
+  
+  greenhouse: async () => {
+    const jobs = await fetchKnownGreenhouseBoards();
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.GREENHOUSE,
+      title: j.title,
+      company: j.company,
+      location: j.location || '',
+      description: j.description,
+      applyUrl: j.url,
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
+  
+  lever:      async () => {
+    const jobs = await fetchKnownLeverBoards();
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.LEVER,
+      title: j.title,
+      company: j.company,
+      location: j.location || '',
+      description: j.description,
+      applyUrl: j.url,
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
+  
+  jooble:     async () => {
+    const jobs = await fetchJoobleJobs({ limit: 50 });
+    return jobs.map(j => ({
+      externalId: j.id,
+      portal: JobPortal.JOOBLE,
+      title: j.title,
+      company: j.company,
+      location: j.location || '',
+      description: j.description,
+      applyUrl: j.url,
+      salaryMin: j.salary_min,
+      salaryMax: j.salary_max,
+      skills: j.tags,
+      postedAt: j.published_at ? new Date(j.published_at) : new Date(),
+    }));
+  },
 };
 
 const worker = new Worker<JobFetchData>(
@@ -48,12 +174,17 @@ const worker = new Worker<JobFetchData>(
     logger.info(`[JobFetcher] Starting fetch for portal: ${portal}`);
 
     const fetcher = PORTAL_MAP[portal];
-    if (!fetcher) throw new Error(`Unknown portal: ${portal}`);
+    if (!fetcher) {
+      logger.warn(`[JobFetcher] No fetcher for portal: ${portal}, skipping`);
+      return { portal, total: 0, skipped: true };
+    }
 
     let rawJobs: RawJob[] = [];
     try {
       rawJobs = await fetcher();
+      logger.info(`[JobFetcher] ${portal}: fetched ${rawJobs.length} raw jobs`);
     } catch (err: any) {
+      logger.error(`[JobFetcher] Error fetching from ${portal}:`, err.message);
       throw err;
     }
 
@@ -75,7 +206,7 @@ const worker = new Worker<JobFetchData>(
             applyUrl: raw.applyUrl, 
             // originalUrl is REQUIRED per schema - use applyUrl
             originalUrl: raw.applyUrl, 
-            // Use salaryMin/salaryMax instead of salary
+            // Use salaryMin/salaryMax
             salaryMin: raw.salaryMin,
             salaryMax: raw.salaryMax,
             skillsRequired: raw.skills ?? [], 
@@ -88,7 +219,7 @@ const worker = new Worker<JobFetchData>(
             location: raw.location ?? '',
             description: raw.description, 
             applyUrl: raw.applyUrl, 
-            // Use salaryMin/salaryMax instead of salary
+            // Use salaryMin/salaryMax
             salaryMin: raw.salaryMin,
             salaryMax: raw.salaryMax,
             skillsRequired: raw.skills ?? [], 
@@ -104,8 +235,8 @@ const worker = new Worker<JobFetchData>(
     }
 
     const durationMs = Date.now() - startMs;
-    logger.info(`[JobFetcher] ${portal}: ${rawJobs.length} jobs in ${durationMs}ms`);
-    return { portal, total: rawJobs.length, durationMs };
+    logger.info(`[JobFetcher] ${portal}: ${rawJobs.length} jobs in ${durationMs}ms (created: ${created}, updated: ${updated})`);
+    return { portal, total: rawJobs.length, created, updated, durationMs };
   },
   { connection: redisConnection, concurrency: 4 }
 );

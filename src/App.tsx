@@ -10,6 +10,10 @@ import LandingPage from '@/pages/LandingPage';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 
+// Public pages
+import PricingSuccess from '@/pages/PricingSuccess';
+import PricingCancel from '@/pages/PricingCancel';
+
 // Dashboard & App pages
 import Dashboard from '@/pages/Dashboard';
 import Jobs from '@/pages/Jobs';
@@ -17,6 +21,7 @@ import Applications from '@/pages/Applications';
 import Profile from '@/pages/Profile';
 import Preferences from '@/pages/Preferences';
 import Portals from '@/pages/Portals';
+import Settings from '@/pages/Settings';
 
 function App() {
   return (
@@ -28,6 +33,8 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/pricing/success" element={<PricingSuccess />} />
+            <Route path="/pricing/cancel" element={<PricingCancel />} />
 
             {/* Protected routes */}
             <Route
@@ -78,6 +85,14 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </ErrorBoundary>
       </AuthProvider>
@@ -86,4 +101,3 @@ function App() {
 }
 
 export default App;
-
