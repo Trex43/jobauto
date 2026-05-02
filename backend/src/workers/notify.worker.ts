@@ -11,14 +11,22 @@ const worker = new Worker<NotifyData>(
   QUEUE_NAMES.NOTIFY,
   async (job: Job<NotifyData>) => {
     const { userId, type, payload } = job.data;
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, name: true } });
+    
+    // Use select with proper fields
+    const user = await prisma.user.findUnique({ 
+      where: { id: userId }, 
+      select: { email: true, firstName: true, lastName: true } 
+    });
     if (!user) return;
+
+    // Replace user.name with firstName + lastName
+    const userName = `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim();
 
     if (type === 'apply_success') {
       await resend.emails.send({
         from: 'JobAuto <notifications@jobauto.com>', to: user.email,
         subject: `Applied to ${payload.jobTitle} at ${payload.company}`,
-        html: `<h2>Application submitted!</h2><p>Hi ${user.name}, we applied to <strong>${payload.jobTitle}</strong> at <strong>${payload.company}</strong> on your behalf.</p>`,
+        html: `<h2>Application submitted!</h2><p>Hi ${userName}, we applied to <strong>${payload.jobTitle}</strong> at <strong>${payload.company}</strong> on your behalf.</p>`,
       });
     }
     if (type === 'apply_failed') {
@@ -29,15 +37,20 @@ const worker = new Worker<NotifyData>(
       });
     }
     if (type === 'daily_summary') {
-      const stats = await prisma.autoApplyJob.groupBy({
-        by: ['status'], where: { userId, updatedAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }, _count: { status: true },
-      });
-      const s: any = {};
-      stats.forEach(r => s[r.status] = r._count.status);
+      // Use aggregate queries instead of groupBy to avoid typing issues
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      // Get counts for each status using separate queries
+      const [completedCount, pendingCount, failedCount] = await Promise.all([
+        prisma.autoApplyJob.count({ where: { userId, status: 'COMPLETED', updatedAt: { gte: yesterday } } }),
+        prisma.autoApplyJob.count({ where: { userId, status: 'PENDING', updatedAt: { gte: yesterday } } }),
+        prisma.autoApplyJob.count({ where: { userId, status: 'FAILED', updatedAt: { gte: yesterday } } }),
+      ]);
+
       await resend.emails.send({
         from: 'JobAuto <notifications@jobauto.com>', to: user.email,
         subject: 'Your JobAuto daily summary',
-        html: `<h2>Daily Summary</h2><ul><li>Applied: ${s.SUCCESS ?? 0}</li><li>Queued: ${s.QUEUED ?? 0}</li><li>Failed: ${s.FAILED ?? 0}</li></ul>`,
+        html: `<h2>Daily Summary</h2><ul><li>Applied: ${completedCount}</li><li>Pending: ${pendingCount}</li><li>Failed: ${failedCount}</li></ul>`,
       });
     }
 
