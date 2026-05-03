@@ -51,6 +51,7 @@ import { fetchUSAJobsJobs } from './jobSources/usajobs';
 import { fetchKnownGreenhouseBoards } from './jobSources/greenhouse';
 import { fetchKnownLeverBoards } from './jobSources/lever';
 import { fetchJoobleJobs } from './jobSources/jooble';
+import { fetchLinkedInJobs } from './jobSources/linkedin';
 
 async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
   switch (source) {
@@ -70,6 +71,8 @@ async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
       return await fetchKnownLeverBoards();
     case 'jooble':
       return await fetchJoobleJobs({ limit: 50 });
+    case 'linkedin':
+      return await fetchLinkedInJobs();
     case 'themuse':
       const { fetchTheMuseJobs } = await import('./jobSources/themuse');
       return await fetchTheMuseJobs();
