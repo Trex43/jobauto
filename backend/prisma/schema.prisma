@@ -344,7 +344,7 @@ model PortalConnection {
 // Job Model (Cached jobs from various portals)
 model Job {
   id         String    @id @default(uuid())
-  externalId String    @unique // ID from the source portal
+  externalId String    @unique(map: "externalId") // ID from the source portal - stringified
   portal     JobPortal
 
   // Job Details

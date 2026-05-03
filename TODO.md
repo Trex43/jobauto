@@ -1,10 +1,24 @@
-# Build Fix TODO
+# Job Search Fix Plan
 
-## Approved Plan Steps:
-- [x] Create src/types/api.ts with API response types
-- [x] Edit src/pages/PricingCancel.tsx (remove unused Zap)
-- [x] Edit src/pages/PricingSuccess.tsx (remove unused, type api response)
-- [ ] Edit src/pages/Settings.tsx (remove unused icons, type api responses)
-- [ ] Run `npm run build` to verify
-- [ ] attempt_completion
+**Current Issue:** No jobs + sync fails (empty DB, job fetchers fail)
+
+**Diagnosis:**
+- Job table empty
+- No PortalConnections  
+- Job sources need API keys/env vars
+- No seed data on deployment
+
+**Fix Steps:**
+- [ ] Run seed.ts locally (`cd backend && npm run db:seed`)
+- [ ] Add Render env vars for job APIs (ADZUNA_APP_ID etc)
+- [ ] Test `/api/jobs/sync` endpoint
+- [ ] Check Redis/BullMQ config for workers
+- [ ] Add job count monitoring
+
+**Immediate Test:**
+```
+cd backend
+npm run db:seed
+curl "http://localhost:5000/api/jobs?limit=10"
+```
 

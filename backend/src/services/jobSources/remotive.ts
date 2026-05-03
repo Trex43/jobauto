@@ -9,7 +9,7 @@ export async function fetchRemotiveJobs(): Promise<RawJob[]> {
     });
     
     return data.jobs.map((job: any) => ({
-      id: job.id,
+      id: String(job.id),
       title: job.title,
       company: job.company_name,
       company_logo: job.company_logo,

@@ -181,8 +181,8 @@ export async function syncUserJobs(userId: string, limit: number = 200): Promise
 
   const deduped = deduplicateJobs(normalized);
   
-  const createData = deduped.map(job => ({
-    externalId: job.externalId,
+const createData = deduped.map(job => ({
+    externalId: String(job.externalId),
     portal: 'OTHER' as const,
     title: job.title,
     company: job.company,
