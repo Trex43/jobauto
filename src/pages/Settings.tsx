@@ -1,9 +1,10 @@
 import { useEffect, useState, type ReactNode, type ChangeEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
-  Zap, LogOut, TrendingUp, Settings, User, Bell, Lock, CreditCard, 
-  Save, Loader2, Eye, EyeOff, Check, AlertTriangle
+  Zap, LogOut, TrendingUp, Settings, User, Lock, CreditCard, 
+  Save, Loader2, Eye, EyeOff
 } from 'lucide-react';
+
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/lib/api';
 
@@ -45,13 +46,13 @@ export default function SettingsPage() {
     ]).then(([prefRes, subRes]) => {
       if (prefRes.success && prefRes.data) {
         setSettings({
-          emailNotifications: prefRes.data.preferences?.emailNotifications ?? true,
-          dailyDigest: prefRes.data.preferences?.dailyDigest ?? true,
-          instantAlerts: prefRes.data.preferences?.instantAlerts ?? false
+          emailNotifications: (prefRes.data as any).preferences?.emailNotifications ?? true,
+          dailyDigest: (prefRes.data as any).preferences?.dailyDigest ?? true,
+          instantAlerts: (prefRes.data as any).preferences?.instantAlerts ?? false
         });
       }
       if (subRes.success && subRes.data) {
-        setSubscription(subRes.data.subscription);
+        setSubscription((subRes.data as any).subscription);
       }
     }).catch(console.error)
     .finally(() => setLoading(false));
@@ -99,9 +100,9 @@ export default function SettingsPage() {
 
   const updatePaymentMethod = async () => {
     try {
-      const res = await api.post('/subscriptions/update-payment');
-      if (res.success && res.data?.url) {
-        window.location.href = res.data.url;
+      const res = await api.post('/subscriptions/update-payment', {});
+      if (res.success && (res.data as any)?.url) {
+        window.location.href = (res.data as any).url;
       }
     } catch (err: any) {
       alert(err.message || 'Failed to update payment method');

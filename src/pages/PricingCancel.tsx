@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Zap, XCircle, ArrowLeft, CreditCard } from 'lucide-react';
+import { XCircle, ArrowLeft, CreditCard } from 'lucide-react';
 
 export default function PricingCancelPage() {
   return (
