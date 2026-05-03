@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { Zap, CheckCircle, Loader2, ArrowRight, Sparkles } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { CheckCircle, Loader2, ArrowRight, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
+
 
 interface SubscriptionData {
   tier: string;
@@ -11,17 +12,16 @@ interface SubscriptionData {
 }
 
 export default function PricingSuccessPage() {
-  const [searchParams] = useSearchParams();
   const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
 
   useEffect(() => {
     // Fetch updated subscription data
     api.get('/subscriptions/current')
       .then(res => {
-        if (res.success && res.data) {
-          setSubscription(res.data.subscription);
+        if (res.success && (res.data as any)?.subscription) {
+          setSubscription((res.data as any).subscription);
         }
       })
       .catch(err => {
