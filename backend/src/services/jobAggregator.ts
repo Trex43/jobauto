@@ -54,6 +54,8 @@ import { fetchJoobleJobs } from './jobSources/jooble';
 import { fetchLinkedInJobs } from './jobSources/linkedin';
 
 async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
+  logger.info(`[AGGREGATOR] Attempting source: ${source}`);
+  
   switch (source) {
     case 'remotive':
       return await fetchRemotiveJobs();
@@ -80,10 +82,11 @@ async function fetchJobsFromSource(source: string): Promise<RawJob[]> {
       const { fetchIndeedJobs } = await import('./jobSources/indeed');
       return await fetchIndeedJobs();
     default:
-      logger.warn(`Source ${source} not implemented yet, skipping`);
+      logger.warn(`[AGGREGATOR] Source ${source} not implemented yet, skipping`);
       return [];
   }
 }
+
 
 // Normalize raw job to Prisma format
 export function normalizeJob(raw: RawJob, source: string, portal: 'OTHER'): NormalizedJob {
@@ -162,20 +165,25 @@ export async function syncUserJobs(userId: string, limit: number = 200): Promise
     return { synced: 0, total: await prisma.job.count({ where: { isActive: true } }) };
   }
 
-  logger.info(`Syncing from sources: ${availableSources.join(', ')}`);
+  logger.info(`[SYNC] User ${userId} - Syncing from sources: ${availableSources.join(', ')} (count: ${availableSources.length})`);
 
   const allRawJobs: RawJob[] = [];
 
   for (const source of availableSources) {
     try {
-      logger.info(`Fetching from ${source}...`);
+      logger.info(`[SYNC] Fetching from ${source}...`);
       const jobs = await fetchJobsFromSource(source);
       allRawJobs.push(...jobs.map(j => ({ ...j, source })));
-      logger.info(`✅ ${source}: ${jobs.length} jobs`);
+      logger.info(`✅ [SYNC] ${source}: ${jobs.length} jobs fetched`);
     } catch (error) {
-      logger.error(`❌ ${source} failed:`, error);
+      logger.error(`❌ [SYNC] ${source} failed:`, error);
     }
   }
+
+  if (allRawJobs.length === 0) {
+    logger.warn(`[SYNC] User ${userId}: No jobs from any source - check API keys/connections`);
+  }
+
 
   if (allRawJobs.length === 0) {
     logger.warn(`No jobs from sources for user ${userId}`);

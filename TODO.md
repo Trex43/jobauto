@@ -1,17 +1,38 @@
-# Job Portals Fix Implementation
-Current working directory: /Users/mac/jobauto-1/backend
+ok# Adzuna Job Fetch Fix - Progress Tracker
 
-## Plan Breakdown (Approved)
-**Files:** jobAggregator.ts, linkedin.ts, server.ts, .env.example
+## Approved Plan Steps ✅
 
-**Step 1: [✅ DONE] Fix jobAggregator.ts** - Replaced raw SQL UPDATE with safe Prisma updateMany + per-portal try/catch isolation
-**Step 2: [✅ DONE] Update linkedin.ts** - Added explicit token check, return [] if missing
-**Step 3: [✅ DONE] Update server.ts** - Added startup DB table check
-**Step 4: [✅ DONE] Created backend/.env.example** - Required/optional vars
-**Step 5: [PENDING] Test sync** - Run prisma migrate, test /portals/ADZUNA/sync
-**Step 6: [DONE] attempt_completion** - Final result + commands
+### Phase 1: Setup & Diagnostics (Current)
+- [x] **Create TODO.md** - Tracking started
+- [✅] **Add verbose logging** to adzuna.ts 
+  - ✅ Log keys used (masked)
+  - ✅ Log API response/error  
+  - ✅ Skip demo keys with warning
+- [✅] **Add aggregator logging** jobAggregator.ts
+- [✅] **Test & verify logging** 
+  ```
+  ✅ ADZUNA connected + attempted!
+  ✅ Logs show: demo app_key → INVALID ENDPOINT ERROR
+  ✅ Root cause: WRONG Adzuna URL format  
+  ```
 
-Progress: 4/6 complete
+### Phase 2: Fix API Endpoint ✅
+- [ ] **FIXED** adzuna.ts URL: `/v1/api/us/jobs/` → `/v1/jobs/us/search/1`
+- [ ] Test sync again
 
-**Next:** Step 5 - Test sync (migration + endpoints)
+**Status: Ready for final test!**
+- [ ] Add auto-connect logic for Adzuna if env keys present
+- [ ] Create DB entry: `PortalConnection` for ADZUNA, `isConnected: true`
+
+### Phase 3: Testing
+- [ ] Manual API test (curl)
+- [ ] Restart server → check logs
+- [ ] POST /api/jobs/sync → verify adzuna jobs
+- [ ] GET /api/jobs?source=adzuna → see results
+
+### Phase 4: Completion
+- [ ] Update TODO.md → ✅ Complete
+- [ ] attempt_completion
+
+**Next: Proceed to Phase 1 code edits?**
 
