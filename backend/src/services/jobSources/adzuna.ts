@@ -5,17 +5,27 @@
  */
 
 import axios from 'axios';
+import { logger } from '../../utils/logger';  // 🎯 Added for verbose logging
 import type { RawJob } from '../jobAggregator';
 
-// Adzuna API configuration
+
+// Adzuna API configuration 🎯 FIXED: Added verbose logging
 // Get free API keys: https://developer.adzuna.com/
 const ADZUNA_CONFIG = {
-  // Use environment variables for production
   appId: process.env.ADZUNA_APP_ID || 'demo',
   appKey: process.env.ADZUNA_APP_KEY || 'demo',
   baseUrl: 'https://api.adzuna.com/v1',
-  country: 'us', // us, gb, au, ca, de, fr, es, it, nl, nz, sg
+  country: 'us',
 };
+
+const hasValidKeys = !!(process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY);
+const appIdMask = hasValidKeys ? '***VALID***' : 'MISSING/DEMO';
+logger.info(`[ADZUNA] Config loaded - AppID: ${appIdMask}, Valid keys: ${hasValidKeys}`);
+
+if (!hasValidKeys) {
+  logger.warn('[ADZUNA] ⚠️  Demo/Missing keys detected - will skip fetches (set ADZUNA_APP_ID & ADZUNA_APP_KEY)');
+}
+
 
 // Map Adzuna categories to common job titles
 const CATEGORY_MAP: Record<string, string> = {
@@ -71,6 +81,12 @@ async function searchJobs(params: {
   category?: string;
   page?: number;
 }): Promise<RawJob[]> {
+  // Skip if no valid keys
+  if (!hasValidKeys) {
+    logger.info('[ADZUNA] Skipping search - no valid keys');
+    return [];
+  }
+
   try {
     const { keyword, location, category, page = 1 } = params;
     
@@ -83,6 +99,7 @@ async function searchJobs(params: {
       sort_by: 'date',
     });
 
+
     if (location) {
       queryParams.append('where', location);
     }
@@ -91,9 +108,12 @@ async function searchJobs(params: {
       queryParams.append('category', category);
     }
 
-    const url = `${ADZUNA_CONFIG.baseUrl}/api/${ADZUNA_CONFIG.country}/jobs/${queryParams.toString()}`;
+    // 🎯 FIXED: Correct Adzuna endpoint format /v1/jobs/{country}/search/{page}
+    const encodedParams = queryParams.toString();
+    const url = `${ADZUNA_CONFIG.baseUrl}/jobs/${ADZUNA_CONFIG.country}/search/1?${encodedParams}`;
+    logger.info(`[ADZUNA] Searching: ${url.split('?')[0]}?${encodedParams.substring(0,100)}...`);
     
-    const { data } = await axios.get(url, {
+    const { data, status } = await axios.get(url, {
       timeout: 10000,
       headers: {
         'User-Agent': 'JobAuto/1.0',
@@ -101,11 +121,16 @@ async function searchJobs(params: {
       },
     });
 
+
+    logger.info(`[ADZUNA] Response: status=${status}, count=${data.results?.length || 0}, total=${data.count || 0}`);
+
     if (!data.results || !Array.isArray(data.results)) {
+      logger.warn('[ADZUNA] Invalid response structure');
       return [];
     }
 
 return data.results.map((job: AdzunaJob) => ({
+
       id: `adzuna-${job.id}`,
       title: job.title,
       company: job.company?.display_name || 'Unknown',
@@ -122,13 +147,18 @@ return data.results.map((job: AdzunaJob) => ({
     }));
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
-      console.error('Adzuna API error:', error.response?.data || error.message);
+      const status = error.response?.status;
+      const msg = error.response?.data?.error?.message || error.message;
+      logger.error(`[ADZUNA] API ERROR ${status}: ${msg}`);
+      if (status === 401) logger.error('[ADZUNA] ❌ 401 Invalid API keys');
+      if (status === 429) logger.error('[ADZUNA] ❌ 429 Rate limit hit');
     } else {
-      console.error('Adzuna API error:', error);
+      logger.error('[ADZUNA] Network/unknown error:', error);
     }
     return [];
   }
 }
+
 
 async function getJobsByCategory(category: string = 'it gigs'): Promise<RawJob[]> {
   return searchJobs({
@@ -171,16 +201,25 @@ async function searchRemoteJobs(keyword: string = 'developer'): Promise<RawJob[]
   }
 }
 
-// Main export function
+// Main export function 🎯 ENHANCED LOGGING
 export async function fetchAdzunaJobs(options?: {
   keyword?: string;
   location?: string;
   category?: string;
   limit?: number;
 }): Promise<RawJob[]> {
+  const startTime = Date.now();
   const { keyword = 'developer', location, category, limit = 100 } = options || {};
 
+  logger.info(`[ADZUNA] fetchAdzunaJobs called: keyword="${keyword}", limit=${limit}, keys=${hasValidKeys ? 'OK' : 'MISSING'}`);
+
+  if (!hasValidKeys) {
+    logger.warn('[ADZUNA] Early return - missing valid keys');
+    return [];
+  }
+
   let jobs: RawJob[] = [];
+
 
   if (category) {
     jobs = await getJobsByCategory(category);
@@ -210,7 +249,12 @@ export async function fetchAdzunaJobs(options?: {
     return true;
   });
 
+  const finalCount = Math.min(deduped.length, limit);
+  const duration = Date.now() - startTime;
+  logger.info(`[ADZUNA] ✅ Complete: ${finalCount}/${deduped.length} jobs in ${duration}ms`);
+
   return deduped.slice(0, limit);
 }
+
 
 export default fetchAdzunaJobs;
