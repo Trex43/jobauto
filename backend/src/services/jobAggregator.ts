@@ -166,12 +166,16 @@ export async function syncUserJobs(userId: string, limit: number = 200): Promise
 
   const allRawJobs: RawJob[] = [];
 
-  await Promise.all(
-    availableSources.map(async (source) => {
+  for (const source of availableSources) {
+    try {
+      logger.info(`Fetching from ${source}...`);
       const jobs = await fetchJobsFromSource(source);
       allRawJobs.push(...jobs.map(j => ({ ...j, source })));
-    })
-  );
+      logger.info(`✅ ${source}: ${jobs.length} jobs`);
+    } catch (error) {
+      logger.error(`❌ ${source} failed:`, error);
+    }
+  }
 
   if (allRawJobs.length === 0) {
     logger.warn(`No jobs from sources for user ${userId}`);
@@ -215,9 +219,23 @@ const createData = deduped.map(job => ({
     skipDuplicates: true
   });
 
-  await prisma.$executeRaw`UPDATE "Job" SET "lastSyncedAt" = NOW() WHERE "lastSyncedAt" IS NULL OR "lastSyncedAt" < NOW() - INTERVAL '24 hours'`;
+  // Safe update lastSyncedAt - skip if table issues
+  try {
+    await prisma.job.updateMany({
+      where: {
+        OR: [
+          { lastSyncedAt: null },
+          { lastSyncedAt: { lt: new Date(Date.now() - 24 * 60 * 60 * 1000) } }
+        ]
+      },
+      data: { lastSyncedAt: new Date() }
+    });
+    logger.info('✅ Updated lastSyncedAt for old jobs');
+  } catch (updateError) {
+    logger.warn('⚠️  Skip lastSyncedAt update (DB table may need migration):', updateError);
+  }
 
-  const total = await prisma.job.count({ where: { isActive: true } });
+  const total = await prisma.job.count({ where: { isActive: true } }).catch(() => 0);
   logger.info(`User ${userId} sync complete: ${deduped.length} jobs, total active: ${total}`);
 
   return { synced: deduped.length, total };

@@ -1,6 +1,12 @@
 import axios from 'axios';
 
 export async function fetchLinkedInJobs(keywords: string = '', limit = 20): Promise<any[]> {
+  // Skip if no token
+  if (!process.env.LINKEDIN_ACCESS_TOKEN) {
+    console.log('LinkedIn: Skipping - no LINKEDIN_ACCESS_TOKEN set');
+    return [];
+  }
+
   try {
     // LinkedIn Jobs API v2
     const response = await axios.get('https://api.linkedin.com/v2/jobSearch', {

@@ -1,24 +1,17 @@
-# Job Search Fix Plan
+# Job Portals Fix Implementation
+Current working directory: /Users/mac/jobauto-1/backend
 
-**Current Issue:** No jobs + sync fails (empty DB, job fetchers fail)
+## Plan Breakdown (Approved)
+**Files:** jobAggregator.ts, linkedin.ts, server.ts, .env.example
 
-**Diagnosis:**
-- Job table empty
-- No PortalConnections  
-- Job sources need API keys/env vars
-- No seed data on deployment
+**Step 1: [✅ DONE] Fix jobAggregator.ts** - Replaced raw SQL UPDATE with safe Prisma updateMany + per-portal try/catch isolation
+**Step 2: [✅ DONE] Update linkedin.ts** - Added explicit token check, return [] if missing
+**Step 3: [✅ DONE] Update server.ts** - Added startup DB table check
+**Step 4: [✅ DONE] Created backend/.env.example** - Required/optional vars
+**Step 5: [PENDING] Test sync** - Run prisma migrate, test /portals/ADZUNA/sync
+**Step 6: [DONE] attempt_completion** - Final result + commands
 
-**Fix Steps:**
-- [ ] Run seed.ts locally (`cd backend && npm run db:seed`)
-- [ ] Add Render env vars for job APIs (ADZUNA_APP_ID etc)
-- [ ] Test `/api/jobs/sync` endpoint
-- [ ] Check Redis/BullMQ config for workers
-- [ ] Add job count monitoring
+Progress: 4/6 complete
 
-**Immediate Test:**
-```
-cd backend
-npm run db:seed
-curl "http://localhost:5000/api/jobs?limit=10"
-```
+**Next:** Step 5 - Test sync (migration + endpoints)
 

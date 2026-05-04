@@ -161,6 +161,15 @@ const startServer = async () => {
     await prisma.$connect();
     console.log('✅ Database connected successfully');
 
+    // Test Job table exists (safe check)
+    try {
+      await prisma.job.findFirst({ take: 1 });
+      console.log('✅ Job table ready');
+    } catch (tableError) {
+      console.error('❌ Job table missing! Run: cd backend && prisma migrate dev --name job-table');
+      console.log('App continues but sync features limited until migration...');
+    }
+
     // Start background workers (job fetcher, auto-applier, cover letter, notifications)
     await startWorkers();
 
